@@ -1,4 +1,4 @@
-package app.automs.internal;
+package app.automs.internal.traits;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;

@@ -1,4 +1,4 @@
-package app.automs.internal;
+package app.automs.internal.traits;
 
 import org.jetbrains.annotations.NotNull;
 import org.openqa.selenium.WebDriver;
