@@ -7,13 +7,20 @@ import app.automs.internal.traits.StromPdfHandler;
 import app.automs.internal.traits.StromWebdriver;
 import com.google.gson.Gson;
 import org.jetbrains.annotations.NotNull;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static app.automs.internal.domain.AutomationProcessingStatus.INTERNAL_ERROR;
 import static app.automs.internal.domain.AutomationProcessingStatus.VALIDATION_FAIL;
 
 abstract public class StromAutomation implements StromWebdriver, StromPdfHandler {
@@ -33,40 +40,63 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
     protected abstract String entryPointUrl();
 
     public AutomationResponse<?> run(AutomationRecipe recipe) {
-        driver = getDriver();
-        driver.get(entryPointUrl());
-        AutomationResponse<?> recipeResponse = process(recipe.getInputParams());
-        driver.quit();
+        AutomationResponse<?> recipeResponse;
+        try {
+            driver = getDriver();
+            driver.get(entryPointUrl());
 
-        if (!validate(recipeResponse)) {
-            recipeResponse.setProcessingStatus(VALIDATION_FAIL);
+            recipeResponse = process(recipe.getInputParams());
+
+            if (!validate(recipeResponse)) {
+                recipeResponse.setProcessingStatus(VALIDATION_FAIL);
+            }
+
+            store(recipe, recipeResponse);
+
+        } catch (Exception e) {
+            //noinspection rawtypes
+            recipeResponse = new AutomationResponse();
+            recipeResponse.setProcessingStatus(INTERNAL_ERROR);
+            recipeResponse.setMessageResponse(e.getMessage());
+            logger.error("Error processing recipe", e);
+
+        } finally {
+            driver.quit();
         }
-
-        store(recipe.getConfig(), recipeResponse);
 
         return recipeResponse;
     }
 
-    protected Boolean store(@NotNull AutomationConfig config, @NotNull AutomationResponse<?> response) {
-        String storePage;
+    protected void store(final @NotNull AutomationRecipe recipe,
+                         final @NotNull AutomationResponse<?> response) throws IOException {
+        final AutomationConfig config = recipe.getConfig();
+        final String filename = recipe.getAutomationResourceId().replace("/", "-").substring(1) + "-v1";
+
+
         if (config.getStorePage()) {
-            storePage = asJson(response);
+            Path path = Paths.get(String.format("%s.html", filename));
+            String pageSource = driver.getPageSource();
+            Files.write(path, pageSource.getBytes());
         }
 
-        String screenshot;
         if (config.getStoreScreenshot()) {
-            screenshot = asJson(response);
+            Path path = Paths.get(String.format("%s.png", filename));
+            TakesScreenshot ts = (TakesScreenshot) driver;
+            Files.write(path, ts.getScreenshotAs(OutputType.BYTES));
         }
-        return true;
+
+        if (config.getStoreJsonResponse()) {
+            Path path = Paths.get(String.format("%s.json", filename));
+            Files.write(path, asJson(response).getBytes());
+        }
     }
 
     protected void withDriverConfig(@NotNull WebDriver driver) {
         driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
     }
 
-
-    protected String asJson(final AutomationResponse<?> response) {
-        return gson.toJson(response);
+    private String asJson(final AutomationResponse<?> response) {
+        return gson.toJson(response.getResponseEntity());
     }
 
     private WebDriver getDriver() {
