@@ -1,7 +1,7 @@
 package app.automs.internal;
 
 import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.contrib.nio.testing.LocalStorageHelper;
+import com.google.cloud.storage.StorageOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,8 +14,8 @@ public class StromConfig {
 
     @Bean
     public Storage createStorage() {
-        Storage storage = LocalStorageHelper.getOptions().getService();
-//        Storage storage =StorageOptions.newBuilder().setProjectId(projectId).build().getService();
+//        Storage storage = LocalStorageHelper.getOptions().getService();
+        Storage storage = StorageOptions.newBuilder().setProjectId(projectId).build().getService();
         return storage;
     }
 

@@ -78,34 +78,35 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
     protected void store(final @NotNull AutomationRecipe recipe,
                          final @NotNull AutomationResponse<?> response) throws IOException {
         final AutomationConfig config = recipe.getConfig();
-        final String baseName = String.format("%s-asset", recipe.getResourceIdParsed());
-        final String bucketName = format("{0}{1}/{2}/", baseBucket, recipe.getOrderId(), recipe.getRequestId());
+        final String objectName = String.format("%s-asset", recipe.getAutomationResourceId().split("/")[1]);
+        final String objectPath = format("{0}/{1}/{2}", recipe.getOrderId(), recipe.getRequestId(), objectName);
 
         if (config.getStorePage()) {
-            String filename = String.format("%s.html", baseName);
+            String filepath = String.format("%s.html", objectPath);
             String pageSource = driver.getPageSource();
-            createFile(filename, bucketName, pageSource.getBytes());
+            createFile(filepath, pageSource.getBytes());
         }
 
         if (config.getStoreScreenshot()) {
-            String filename = String.format("%s.png", baseName);
+            String filepath = String.format("%s.png", objectPath);
             TakesScreenshot ts = (TakesScreenshot) driver;
-            createFile(filename, bucketName, ts.getScreenshotAs(OutputType.BYTES));
+            createFile(filepath, ts.getScreenshotAs(OutputType.BYTES));
         }
 
         if (config.getStoreJsonResponse()) {
-            String filename = String.format("%s.json", baseName);
-            createFile(filename, bucketName, getEntityAsJson(response).getBytes());
+            String filepath = String.format("%s.json", objectPath);
+            createFile(filepath, getEntityAsJson(response).getBytes());
         }
     }
 
-    private void createFile(String filename, String bucketName, byte[] bytes) throws IOException {
+    private void createFile(String filepath, byte[] bytes) throws IOException {
         // write gcs
-        BlobId blobId = BlobId.of(bucketName, filename);
+        BlobId blobId = BlobId.of(baseBucket, filepath);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
         storage.create(blobInfo, bytes);
 
         // write local
+        String filename = filepath.split("/")[2];
         Path path = Paths.get(filename);
         Files.write(path, bytes);
     }
