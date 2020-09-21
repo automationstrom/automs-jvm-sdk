@@ -5,6 +5,9 @@ import app.automs.internal.domain.AutomationRecipe;
 import app.automs.internal.domain.AutomationResponse;
 import app.automs.internal.traits.StromPdfHandler;
 import app.automs.internal.traits.StromWebdriver;
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
 import com.google.gson.Gson;
 import org.jetbrains.annotations.NotNull;
 import org.openqa.selenium.OutputType;
@@ -20,8 +23,8 @@ import java.nio.file.Paths;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static app.automs.internal.domain.AutomationProcessingStatus.INTERNAL_ERROR;
-import static app.automs.internal.domain.AutomationProcessingStatus.VALIDATION_FAIL;
+import static app.automs.internal.domain.AutomationProcessingStatus.*;
+import static java.text.MessageFormat.format;
 
 abstract public class StromAutomation implements StromWebdriver, StromPdfHandler {
 
@@ -30,6 +33,10 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
     protected WebDriver driver;
     @Value("${automs.webdriver.url}")
     private String webdriverUri;
+    @Value("${automs.baseBucket}")
+    private String baseBucket;
+    @Autowired
+    private Storage storage;
     @Autowired
     private Gson gson;
 
@@ -52,6 +59,7 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
             }
 
             store(recipe, recipeResponse);
+            recipeResponse.setProcessingStatus(OK);
 
         } catch (Exception e) {
             //noinspection rawtypes
@@ -70,32 +78,43 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
     protected void store(final @NotNull AutomationRecipe recipe,
                          final @NotNull AutomationResponse<?> response) throws IOException {
         final AutomationConfig config = recipe.getConfig();
-        final String filename = recipe.getAutomationResourceId().replace("/", "-").substring(1) + "-v1";
-
+        final String baseName = String.format("%s-asset", recipe.getResourceIdParsed());
+        final String bucketName = format("{0}{1}/{2}/", baseBucket, recipe.getOrderId(), recipe.getRequestId());
 
         if (config.getStorePage()) {
-            Path path = Paths.get(String.format("%s.html", filename));
+            String filename = String.format("%s.html", baseName);
             String pageSource = driver.getPageSource();
-            Files.write(path, pageSource.getBytes());
+            createFile(filename, bucketName, pageSource.getBytes());
         }
 
         if (config.getStoreScreenshot()) {
-            Path path = Paths.get(String.format("%s.png", filename));
+            String filename = String.format("%s.png", baseName);
             TakesScreenshot ts = (TakesScreenshot) driver;
-            Files.write(path, ts.getScreenshotAs(OutputType.BYTES));
+            createFile(filename, bucketName, ts.getScreenshotAs(OutputType.BYTES));
         }
 
         if (config.getStoreJsonResponse()) {
-            Path path = Paths.get(String.format("%s.json", filename));
-            Files.write(path, asJson(response).getBytes());
+            String filename = String.format("%s.json", baseName);
+            createFile(filename, bucketName, getEntityAsJson(response).getBytes());
         }
+    }
+
+    private void createFile(String filename, String bucketName, byte[] bytes) throws IOException {
+        // write gcs
+        BlobId blobId = BlobId.of(bucketName, filename);
+        BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
+        storage.create(blobInfo, bytes);
+
+        // write local
+        Path path = Paths.get(filename);
+        Files.write(path, bytes);
     }
 
     protected void withDriverConfig(@NotNull WebDriver driver) {
         driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
     }
 
-    private String asJson(final AutomationResponse<?> response) {
+    private String getEntityAsJson(final AutomationResponse<?> response) {
         return gson.toJson(response.getResponseEntity());
     }
 
@@ -105,4 +124,3 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
         return driver;
     }
 }
-

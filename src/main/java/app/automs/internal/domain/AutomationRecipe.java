@@ -44,6 +44,9 @@ public class AutomationRecipe {
     public String getAutomationResourceId() {
         return automationResourceId;
     }
+    public String getResourceIdParsed() {
+        return automationResourceId.replace("/", "-").substring(1);
+    }
 
     public void setAutomationResourceId(String automationResourceId) {
         this.automationResourceId = automationResourceId;
