@@ -66,7 +66,7 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
             recipeResponse = new AutomationResponse();
             recipeResponse.setProcessingStatus(INTERNAL_ERROR);
             recipeResponse.setMessageResponse(e.getMessage());
-            logger.error("Error processing recipe", e);
+            log.error("Error processing recipe", e);
 
         } finally {
             driver.quit();
