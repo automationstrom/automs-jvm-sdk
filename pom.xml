@@ -7,7 +7,7 @@
     <packaging>jar</packaging>
     <name>automs-automation-lib</name>
     <description>automationstrom java lib for automation (selenium) creation</description>
-    <version>0.1.14</version>
+    <version>0.1.16</version>
 
     <properties>
         <java.version>1.8</java.version>
@@ -91,6 +91,12 @@
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-nio</artifactId>
             <version>0.121.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.12</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
     <build>
