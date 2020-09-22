@@ -1,6 +1,7 @@
 package app.automs.internal.domain;
 
 import lombok.*;
+import org.jetbrains.annotations.NotNull;
 
 import java.time.ZonedDateTime;
 import java.util.Collections;
@@ -19,6 +20,7 @@ public class AutomationRecipe {
     private AutomationConfig config = new AutomationConfig();
     private AutomationResponse<?> response = AutomationResponse.EMPTY_RESPONSE;
 
+    @NotNull
     public static AutomationRecipe createFrom(AutomationRequest request) {
         val recipe = new AutomationRecipe();
         recipe.setOrderId(request.getOrderId());

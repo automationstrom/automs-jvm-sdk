@@ -17,7 +17,6 @@ import org.openqa.selenium.WebDriver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -26,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import static app.automs.internal.domain.AutomationProcessingStatus.*;
 import static java.text.MessageFormat.format;
 
+@SuppressWarnings("SpringJavaAutowiredMembersInspection")
 abstract public class StromAutomation implements StromWebdriver, StromPdfHandler {
 
     @Value("${automs.automation.resourceId}")
@@ -75,8 +75,9 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
         return recipeResponse;
     }
 
+    @SneakyThrows
     protected void store(final @NotNull AutomationRecipe recipe,
-                         final @NotNull AutomationResponse<?> response) throws IOException {
+                         final @NotNull AutomationResponse<?> response) {
         val config = recipe.getConfig();
         val objectName = String.format("%s-asset", recipe.getAutomationResourceId().split("/")[1]);
         val objectPath = format("{0}/{1}/{2}", recipe.getOrderId(), recipe.getRequestId(), objectName);
