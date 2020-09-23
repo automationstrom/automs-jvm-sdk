@@ -50,10 +50,8 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
     public AutomationResponse<?> run(AutomationRecipe recipe) {
         AutomationResponse<?> recipeResponse;
         try {
-
-            checkRequestedResource(recipe);
-
             driver = getDriver();
+            checkRequestedResource(recipe);
             driver.get(entryPointUrl());
 
             recipeResponse = process(recipe.getInputParams());
@@ -83,7 +81,7 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
         val requestedResourceId = recipe.getAutomationResourceId();
         if (!Objects.equals(requestedResourceId, automationResourceId)) {
             throw new IllegalArgumentException(
-                    String.format("recipe resource does not match with the requested %s given %s",
+                    String.format("recipe resource does not match with the requested [%s] given [%s]",
                             automationResourceId, requestedResourceId));
         }
     }
