@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Value;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static app.automs.internal.domain.AutomationProcessingStatus.*;
@@ -29,7 +30,7 @@ import static java.text.MessageFormat.format;
 abstract public class StromAutomation implements StromWebdriver, StromPdfHandler {
 
     @Value("${automs.automation.resourceId}")
-    public String resourceId;
+    public String automationResourceId;
     protected WebDriver driver;
     @Value("${automs.webdriver.url}")
     private String webdriverUri;
@@ -49,6 +50,9 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
     public AutomationResponse<?> run(AutomationRecipe recipe) {
         AutomationResponse<?> recipeResponse;
         try {
+
+            checkRequestedResource(recipe);
+
             driver = getDriver();
             driver.get(entryPointUrl());
 
@@ -73,6 +77,15 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
         }
 
         return recipeResponse;
+    }
+
+    private void checkRequestedResource(AutomationRecipe recipe) {
+        val requestedResourceId = recipe.getAutomationResourceId();
+        if (!Objects.equals(requestedResourceId, automationResourceId)) {
+            throw new IllegalArgumentException(
+                    String.format("recipe resource does not match with the requested %s given %s",
+                            automationResourceId, requestedResourceId));
+        }
     }
 
     @SneakyThrows
