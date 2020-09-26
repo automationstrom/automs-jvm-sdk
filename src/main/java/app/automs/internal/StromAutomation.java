@@ -1,5 +1,6 @@
 package app.automs.internal;
 
+import app.automs.internal.config.StromProperties;
 import app.automs.internal.domain.AutomationRecipe;
 import app.automs.internal.domain.AutomationResponse;
 import app.automs.internal.traits.StromPdfHandler;
@@ -15,7 +16,6 @@ import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -29,13 +29,9 @@ import static java.text.MessageFormat.format;
 @SuppressWarnings("SpringJavaAutowiredMembersInspection")
 abstract public class StromAutomation implements StromWebdriver, StromPdfHandler {
 
-    @Value("${automs.automation.resourceId}")
-    public String automationResourceId;
+    @Autowired
+    public StromProperties properties;
     protected WebDriver driver;
-    @Value("${automs.webdriver.url}")
-    private String webdriverUri;
-    @Value("${automs.baseBucket}")
-    private String baseBucket;
     @Autowired
     private Storage storage;
     @Autowired
@@ -50,11 +46,17 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
     public AutomationResponse<?> run(AutomationRecipe recipe) {
         AutomationResponse<?> recipeResponse;
         try {
+            log.info(
+                    String.format("starting automation process, requestId%s automationId: %s",
+                            recipe.getRequestId(), recipe.getAutomationResourceId()));
             driver = getDriver();
             checkRequestedResource(recipe);
             driver.get(entryPointUrl());
+            log.info(String.format("driver ready, automation using entry point url: [%s]", entryPointUrl()));
 
             recipeResponse = process(recipe.getInputParams());
+            log.info(String.format("automation process done, last visited url: [%s - %s]",
+                    driver.getCurrentUrl(), driver.getTitle()));
 
             if (!validate(recipeResponse)) {
                 recipeResponse.setProcessingStatus(VALIDATION_FAIL);
@@ -79,10 +81,10 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
 
     private void checkRequestedResource(AutomationRecipe recipe) {
         val requestedResourceId = recipe.getAutomationResourceId();
-        if (!Objects.equals(requestedResourceId, automationResourceId)) {
+        if (!Objects.equals(requestedResourceId, properties.getResourceId())) {
             throw new IllegalArgumentException(
                     String.format("recipe resource does not match with the requested [%s] given [%s]",
-                            automationResourceId, requestedResourceId));
+                            properties.getResourceId(), requestedResourceId));
         }
     }
 
@@ -114,7 +116,7 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
     @SneakyThrows
     private void createFile(String filepath, byte[] bytes) {
         // write gcs
-        val blobId = BlobId.of(baseBucket, filepath);
+        val blobId = BlobId.of(properties.getBaseBucket(), filepath);
         val blobInfo = BlobInfo.newBuilder(blobId).build();
         storage.create(blobInfo, bytes);
 
@@ -133,7 +135,7 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
     }
 
     private WebDriver getDriver() {
-        val driver = withRemoteWebdriver(webdriverUri, prepareHeadlessBrowser());
+        val driver = withRemoteWebdriver(properties.getWebdriver(), prepareHeadlessBrowser());
         withDriverConfig(driver);
         return driver;
     }
