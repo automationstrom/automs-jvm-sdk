@@ -1,5 +1,6 @@
 package app.automs.sdk.traits;
 
+import app.automs.sdk.domain.config.ChromeDriverOptionsConfig;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.jetbrains.annotations.NotNull;
@@ -17,39 +18,10 @@ public interface Webdriver {
     Logger log = LoggerFactory.getLogger(Webdriver.class);
 
     @NotNull
-    default ChromeOptions prepareHeadlessBrowser() {
+    default ChromeOptions prepareHeadlessBrowser(final ChromeDriverOptionsConfig config) {
         val chromeOptions = new ChromeOptions();
-
-        // https://peter.sh/experiments/chromium-command-line-switches/#load-extension
-        // more details
-
-        // core
-        chromeOptions.addArguments("--headless");
-        chromeOptions.addArguments("--disable-dev-shm-usage");
-        chromeOptions.addArguments("--no-sandbox");
-
-        // testing
-        chromeOptions.addArguments("--window-size=1366,768");
-        chromeOptions.addArguments("--disable-gpu");
-        chromeOptions.addArguments("--disable-notifications");
-//        chromeOptions.addArguments("--no-zygote");
-//        chromeOptions.addArguments("--disable-extensions");
-
-        //recommend
-        chromeOptions.addArguments("--disable-background-timer-throttling");
-        chromeOptions.addArguments("--disable-backgrounding-occluded-windows");
-        chromeOptions.addArguments("--disable-breakpad");
-        chromeOptions.addArguments("--disable-component-extensions-with-background-pages");
-        chromeOptions.addArguments("--disable-extensions");
-        chromeOptions.addArguments("--disable-features=TranslateUI,BlinkGenPropertyTrees");
-        chromeOptions.addArguments("--disable-ipc-flooding-protection");
-        chromeOptions.addArguments("--disable-renderer-backgrounding");
-        chromeOptions.addArguments("--enable-features=NetworkService,NetworkServiceInProcess");
-        chromeOptions.addArguments("--force-color-profile=srgb");
-        chromeOptions.addArguments("--hide-scrollbars");
-        chromeOptions.addArguments("--metrics-recording-only");
-        chromeOptions.addArguments("--mute-audio");
-
+        // more details @ https://peter.sh/experiments/chromium-command-line-switches/#load-extension
+        chromeOptions.addArguments(config.getConfigProfiles().get("default"));
         return chromeOptions;
     }
 

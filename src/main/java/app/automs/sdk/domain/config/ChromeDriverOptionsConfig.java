@@ -1,5 +1,6 @@
 package app.automs.sdk.domain.config;
 
+import lombok.Data;
 import lombok.val;
 
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.Map;
 
 import static java.util.Collections.unmodifiableMap;
 
+@Data
 public class ChromeDriverOptionsConfig {
     Map<String, List<String>> configProfiles;
 
@@ -46,7 +48,6 @@ public class ChromeDriverOptionsConfig {
                 add("--mute-audio");
             }
         };
-
 
         configProfiles = unmodifiableMap(
                 new HashMap<String, List<String>>() {{

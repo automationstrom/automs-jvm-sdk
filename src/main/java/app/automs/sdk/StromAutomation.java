@@ -2,6 +2,7 @@ package app.automs.sdk;
 
 import app.automs.sdk.config.StromProperties;
 import app.automs.sdk.domain.AutomationRecipe;
+import app.automs.sdk.domain.config.ChromeDriverOptionsConfig;
 import app.automs.sdk.domain.http.AutomationResponse;
 import app.automs.sdk.traits.HtmlParser;
 import app.automs.sdk.traits.StorageHandler;
@@ -15,7 +16,6 @@ import lombok.val;
 import lombok.var;
 import org.jetbrains.annotations.NotNull;
 import org.openqa.selenium.By;
-import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +31,7 @@ import static app.automs.sdk.helper.CharsetHelper.getStringBytesEncodedAs;
 import static app.automs.sdk.helper.ScreenshootHelper.takeFullPageScreenShotAsByte;
 import static java.text.MessageFormat.format;
 import static org.openqa.selenium.By.*;
+import static org.openqa.selenium.OutputType.BYTES;
 
 @SuppressWarnings("SpringJavaAutowiredMembersInspection")
 abstract public class StromAutomation implements Webdriver, HtmlParser, StorageHandler {
@@ -56,7 +57,7 @@ abstract public class StromAutomation implements Webdriver, HtmlParser, StorageH
                     String.format("starting automation process, requestId%s automationId: %s",
                             recipe.getRequestId(), recipe.getAutomationResourceId())
             );
-            driver = getDriver();
+            driver = getDriver(recipe.getConfig().getChromeDriverOptionsConfig());
             checkRequestedResource(recipe);
             driver.get(entryPointUrl());
             log.info(String.format("driver ready, automation using entry point url: [%s]", entryPointUrl()));
@@ -141,7 +142,7 @@ abstract public class StromAutomation implements Webdriver, HtmlParser, StorageH
                             tartgetElement = cssSelector(shootConfig.getWithElement());
                             break;
                     }
-                    val elementBytes = driver.findElement(tartgetElement).getScreenshotAs(OutputType.BYTES);
+                    val elementBytes = driver.findElement(tartgetElement).getScreenshotAs(BYTES);
                     createFile(filepath, elementBytes);
                     break;
                 case FULLPAGE:
@@ -149,7 +150,7 @@ abstract public class StromAutomation implements Webdriver, HtmlParser, StorageH
                     break;
                 case WINDOW:
                     val ts = (TakesScreenshot) driver;
-                    createFile(filepath, ts.getScreenshotAs(OutputType.BYTES));
+                    createFile(filepath, ts.getScreenshotAs(BYTES));
                     break;
             }
         }
@@ -182,7 +183,13 @@ abstract public class StromAutomation implements Webdriver, HtmlParser, StorageH
     }
 
     private WebDriver getDriver() {
-        val driver = withRemoteWebdriver(properties.getWebdriver(), prepareHeadlessBrowser());
+        return getDriver(null);
+    }
+
+    private WebDriver getDriver(ChromeDriverOptionsConfig config) {
+        config = config == null ? new ChromeDriverOptionsConfig() : config;
+
+        val driver = withRemoteWebdriver(properties.getWebdriver(), prepareHeadlessBrowser(config));
         withDriverConfig(driver);
         return driver;
     }
