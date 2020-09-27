@@ -2,11 +2,11 @@
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>app-automs-sdk</artifactId>
+    <artifactId>automs-jvm-sdkk</artifactId>
     <groupId>app.automs.sdk</groupId>
     <packaging>jar</packaging>
-    <name>automs-automation-sdk</name>
-    <description>automationstrom java lib for automation (selenium) creation</description>
+    <name>automs-jvm-sdk</name>
+    <description>SDK for automation(strom) development (JVM)</description>
     <version>0.1.0</version>
 
     <properties>
@@ -33,7 +33,7 @@
         <repository>
             <id>bintray-automationstrom-lib</id>
             <name>automationstrom-lib</name>
-            <url>https://api.bintray.com/maven/automationstrom/lib/app-automs-lib/;publish=1</url>
+            <url>https://api.bintray.com/maven/automationstrom/lib/automs-jvm-sdk/;publish=1</url>
         </repository>
     </distributionManagement>
 

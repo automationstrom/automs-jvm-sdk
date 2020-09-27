@@ -5,4 +5,4 @@ target
 .classpath
 .project
 .settings
-/app-automs-sdk.iml
+/automs-jvm-sdk.iml
