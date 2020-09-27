@@ -3,8 +3,9 @@ package app.automs.internal;
 import app.automs.internal.config.StromProperties;
 import app.automs.internal.domain.AutomationRecipe;
 import app.automs.internal.domain.AutomationResponse;
-import app.automs.internal.traits.StromPdfHandler;
-import app.automs.internal.traits.StromWebdriver;
+import app.automs.internal.traits.HtmlParser;
+import app.automs.internal.traits.StorageHandler;
+import app.automs.internal.traits.Webdriver;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
@@ -12,11 +13,14 @@ import com.google.gson.Gson;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.jetbrains.annotations.NotNull;
-import org.openqa.selenium.OutputType;
-import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.springframework.beans.factory.annotation.Autowired;
+import ru.yandex.qatools.ashot.AShot;
+import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
 
+import javax.imageio.ImageIO;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -27,7 +31,7 @@ import static app.automs.internal.domain.AutomationProcessingStatus.*;
 import static java.text.MessageFormat.format;
 
 @SuppressWarnings("SpringJavaAutowiredMembersInspection")
-abstract public class StromAutomation implements StromWebdriver, StromPdfHandler {
+abstract public class StromAutomation implements Webdriver, HtmlParser, StorageHandler {
 
     @Autowired
     public StromProperties properties;
@@ -36,6 +40,25 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
     private Storage storage;
     @Autowired
     private Gson gson;
+
+    private static byte[] takeScreenShotAsByte(WebDriver webDriver) throws IOException {
+        return takeFullPageScreenShotAsByte(webDriver);
+    }
+
+    private static byte[] takeFullPageScreenShotAsByte(WebDriver webDriver) throws IOException {
+        val fpScreenshot =
+                new AShot()
+                        .shootingStrategy(ShootingStrategies.viewportPasting(1000))
+                        .takeScreenshot(webDriver);
+
+        val originalImage = fpScreenshot.getImage();
+
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            ImageIO.write(originalImage, "png", baos);
+            baos.flush();
+            return baos.toByteArray();
+        }
+    }
 
     protected abstract AutomationResponse<?> process(Map<String, String> args);
 
@@ -48,21 +71,23 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
         try {
             log.info(
                     String.format("starting automation process, requestId%s automationId: %s",
-                            recipe.getRequestId(), recipe.getAutomationResourceId()));
+                            recipe.getRequestId(), recipe.getAutomationResourceId())
+            );
             driver = getDriver();
             checkRequestedResource(recipe);
             driver.get(entryPointUrl());
             log.info(String.format("driver ready, automation using entry point url: [%s]", entryPointUrl()));
 
             recipeResponse = process(recipe.getInputParams());
-            log.info(String.format("automation process done, last visited url: [%s - %s]",
-                    driver.getCurrentUrl(), driver.getTitle()));
+
+            val exitPointUrl = driver.getCurrentUrl();
+            log.info(String.format("automation process done, last visited url: [%s - %s]", exitPointUrl, driver.getTitle()));
 
             if (!validate(recipeResponse)) {
                 recipeResponse.setProcessingStatus(VALIDATION_FAIL);
             }
 
-            store(recipe, recipeResponse);
+            store(recipe, recipeResponse, exitPointUrl);
             recipeResponse.setProcessingStatus(OK);
 
         } catch (Exception e) {
@@ -90,21 +115,21 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
 
     @SneakyThrows
     protected void store(final @NotNull AutomationRecipe recipe,
-                         final @NotNull AutomationResponse<?> response) {
+                         final @NotNull AutomationResponse<?> response,
+                         final @NotNull String exitPointUrl) {
         val config = recipe.getConfig();
         val objectName = String.format("%s-asset", recipe.getAutomationResourceId().split("/")[1]);
         val objectPath = format("{0}/{1}/{2}", recipe.getOrderId(), recipe.getRequestId(), objectName);
 
         if (config.getStorePage()) {
             val filepath = String.format("%s.html", objectPath);
-            val pageSource = driver.getPageSource();
+            val pageSource = appendAbsolutPath(driver.getPageSource(), exitPointUrl);
             createFile(filepath, pageSource.getBytes());
         }
 
         if (config.getStoreScreenshot()) {
             val filepath = String.format("%s.png", objectPath);
-            val ts = (TakesScreenshot) driver;
-            createFile(filepath, ts.getScreenshotAs(OutputType.BYTES));
+            createFile(filepath, takeScreenShotAsByte(driver));
         }
 
         if (config.getStoreJsonResponse()) {
@@ -114,7 +139,7 @@ abstract public class StromAutomation implements StromWebdriver, StromPdfHandler
     }
 
     @SneakyThrows
-    private void createFile(String filepath, byte[] bytes) {
+    protected void createFile(String filepath, byte[] bytes) {
         // write gcs
         val blobId = BlobId.of(properties.getBaseBucket(), filepath);
         val blobInfo = BlobInfo.newBuilder(blobId).build();

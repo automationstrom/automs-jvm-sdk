@@ -7,7 +7,8 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import java.io.BufferedInputStream;
 import java.net.URL;
 
-public interface StromPdfHandler {
+@Deprecated
+public interface PdfHandler {
 
     default String readPDFContent(String appUrl) throws Exception {
 
