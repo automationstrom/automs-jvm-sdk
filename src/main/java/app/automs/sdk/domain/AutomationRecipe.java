@@ -30,6 +30,7 @@ public class AutomationRecipe {
         recipe.setRequestId(request.getRequestId());
         recipe.setInputParams(request.getInputParams());
         recipe.setAutomationResourceId(request.getAutomationResourceId());
+        recipe.config = request.getConfig();
         return recipe;
     }
 

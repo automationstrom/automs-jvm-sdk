@@ -31,4 +31,5 @@ public class StromConfig {
         }
         return storage;
     }
+
 }
