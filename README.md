@@ -1,2 +1,2 @@
-# app-automs-lib
-java lib for automation (selenium) creation
+# automs-jvm-sdk 
+SDK for automation(strom) development (JVM)
