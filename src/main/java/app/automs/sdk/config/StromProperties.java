@@ -1,4 +1,4 @@
-package app.automs.internal.config;
+package app.automs.sdk.config;
 
 import lombok.Data;
 import org.springframework.context.annotation.Configuration;

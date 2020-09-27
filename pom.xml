@@ -2,12 +2,12 @@
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>app-automs-lib</artifactId>
-    <groupId>app.automs.internal</groupId>
+    <artifactId>app-automs-sdk</artifactId>
+    <groupId>app.automs.sdk</groupId>
     <packaging>jar</packaging>
-    <name>automs-automation-lib</name>
+    <name>automs-automation-sdk</name>
     <description>automationstrom java lib for automation (selenium) creation</description>
-    <version>0.2.2</version>
+    <version>0.1.0</version>
 
     <properties>
         <java.version>1.8</java.version>

@@ -1,34 +1,36 @@
-package app.automs.internal;
+package app.automs.sdk;
 
-import app.automs.internal.config.StromProperties;
-import app.automs.internal.domain.AutomationRecipe;
-import app.automs.internal.domain.AutomationResponse;
-import app.automs.internal.traits.HtmlParser;
-import app.automs.internal.traits.StorageHandler;
-import app.automs.internal.traits.Webdriver;
+import app.automs.sdk.config.StromProperties;
+import app.automs.sdk.domain.AutomationRecipe;
+import app.automs.sdk.domain.http.AutomationResponse;
+import app.automs.sdk.traits.HtmlParser;
+import app.automs.sdk.traits.StorageHandler;
+import app.automs.sdk.traits.Webdriver;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.gson.Gson;
 import lombok.SneakyThrows;
 import lombok.val;
+import lombok.var;
 import org.jetbrains.annotations.NotNull;
+import org.openqa.selenium.By;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.springframework.beans.factory.annotation.Autowired;
-import ru.yandex.qatools.ashot.AShot;
-import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
 
-import javax.imageio.ImageIO;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import static app.automs.internal.domain.AutomationProcessingStatus.*;
+import static app.automs.sdk.domain.AutomationProcessingStatus.*;
+import static app.automs.sdk.helper.CharsetHelper.getStringBytesEncodedAs;
+import static app.automs.sdk.helper.ScreenshootHelper.takeFullPageScreenShotAsByte;
 import static java.text.MessageFormat.format;
+import static org.openqa.selenium.By.*;
 
 @SuppressWarnings("SpringJavaAutowiredMembersInspection")
 abstract public class StromAutomation implements Webdriver, HtmlParser, StorageHandler {
@@ -40,25 +42,6 @@ abstract public class StromAutomation implements Webdriver, HtmlParser, StorageH
     private Storage storage;
     @Autowired
     private Gson gson;
-
-    private static byte[] takeScreenShotAsByte(WebDriver webDriver) throws IOException {
-        return takeFullPageScreenShotAsByte(webDriver);
-    }
-
-    private static byte[] takeFullPageScreenShotAsByte(WebDriver webDriver) throws IOException {
-        val fpScreenshot =
-                new AShot()
-                        .shootingStrategy(ShootingStrategies.viewportPasting(1000))
-                        .takeScreenshot(webDriver);
-
-        val originalImage = fpScreenshot.getImage();
-
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            ImageIO.write(originalImage, "png", baos);
-            baos.flush();
-            return baos.toByteArray();
-        }
-    }
 
     protected abstract AutomationResponse<?> process(Map<String, String> args);
 
@@ -87,7 +70,7 @@ abstract public class StromAutomation implements Webdriver, HtmlParser, StorageH
                 recipeResponse.setProcessingStatus(VALIDATION_FAIL);
             }
 
-            store(recipe, recipeResponse, exitPointUrl);
+            store(recipe, recipeResponse, exitPointUrl, driver.getPageSource());
             recipeResponse.setProcessingStatus(OK);
 
         } catch (Exception e) {
@@ -116,23 +99,62 @@ abstract public class StromAutomation implements Webdriver, HtmlParser, StorageH
     @SneakyThrows
     protected void store(final @NotNull AutomationRecipe recipe,
                          final @NotNull AutomationResponse<?> response,
-                         final @NotNull String exitPointUrl) {
+                         final @NotNull String exitPointUrl,
+                         final @NotNull String givenPageSource) {
         val config = recipe.getConfig();
         val objectName = String.format("%s-asset", recipe.getAutomationResourceId().split("/")[1]);
         val objectPath = format("{0}/{1}/{2}", recipe.getOrderId(), recipe.getRequestId(), objectName);
 
-        if (config.getStorePage()) {
+        val pageConfig = config.getPageCopyConfig();
+        if (pageConfig.getStorePage()) {
             val filepath = String.format("%s.html", objectPath);
-            val pageSource = appendAbsolutPath(driver.getPageSource(), exitPointUrl);
-            createFile(filepath, pageSource.getBytes());
+
+            var pageSource = givenPageSource;
+
+            if (pageConfig.getEnforceAbsolutLinks()) {
+                pageSource = appendAbsolutPath(givenPageSource, exitPointUrl);
+            }
+
+            createFile(filepath, getStringBytesEncodedAs(pageSource, pageConfig.getCharset()));
         }
 
-        if (config.getStoreScreenshot()) {
+        val shootConfig = config.getScreenshotConfig();
+        if (shootConfig.getStoreScreenshot()) {
             val filepath = String.format("%s.png", objectPath);
-            createFile(filepath, takeScreenShotAsByte(driver));
+            switch (shootConfig.getTarget()) {
+                case ELEMENT:
+                    By tartgetElement = null;
+                    switch (shootConfig.getElementType()) {
+                        case XPATH:
+                            tartgetElement = xpath(shootConfig.getWithElement());
+                            break;
+                        case ID:
+                            tartgetElement = id(shootConfig.getWithElement());
+                            break;
+                        case NAME:
+                            tartgetElement = name(shootConfig.getWithElement());
+                            break;
+                        case CLASSNAME:
+                            tartgetElement = className(shootConfig.getWithElement());
+                            break;
+                        case SELECTOR:
+                            tartgetElement = cssSelector(shootConfig.getWithElement());
+                            break;
+                    }
+                    val elementBytes = driver.findElement(tartgetElement).getScreenshotAs(OutputType.BYTES);
+                    createFile(filepath, elementBytes);
+                    break;
+                case FULLPAGE:
+                    createFile(filepath, takeFullPageScreenShotAsByte(driver));
+                    break;
+                case WINDOW:
+                    val ts = (TakesScreenshot) driver;
+                    createFile(filepath, ts.getScreenshotAs(OutputType.BYTES));
+                    break;
+            }
         }
 
-        if (config.getStoreJsonResponse()) {
+        if (config.getJsonResponseConfig().getStoreJsonResponse()) {
             val filepath = String.format("%s.json", objectPath);
             createFile(filepath, getEntityAsJson(response).getBytes());
         }

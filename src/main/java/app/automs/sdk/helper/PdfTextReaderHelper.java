@@ -1,4 +1,4 @@
-package app.automs.internal.traits;
+package app.automs.sdk.helper;
 
 import lombok.val;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -8,10 +8,9 @@ import java.io.BufferedInputStream;
 import java.net.URL;
 
 @Deprecated
-public interface PdfHandler {
+public class PdfTextReaderHelper {
 
-    default String readPDFContent(String appUrl) throws Exception {
-
+    public static String readPDFContent(String appUrl) throws Exception {
         val url = new URL(appUrl);
         val input = url.openStream();
         val fileToParse = new BufferedInputStream(input);

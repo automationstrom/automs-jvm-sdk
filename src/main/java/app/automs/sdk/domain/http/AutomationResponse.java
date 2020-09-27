@@ -1,5 +1,6 @@
-package app.automs.internal.domain;
+package app.automs.sdk.domain.http;
 
+import app.automs.sdk.domain.AutomationProcessingStatus;
 import lombok.Data;
 
 @Data

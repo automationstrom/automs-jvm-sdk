@@ -1,4 +1,4 @@
-package app.automs.internal.domain;
+package app.automs.sdk.domain.http;
 
 import lombok.Data;
 

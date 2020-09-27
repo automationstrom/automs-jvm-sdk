@@ -1,5 +1,8 @@
-package app.automs.internal.domain;
+package app.automs.sdk.domain;
 
+import app.automs.sdk.domain.http.AutomationRequest;
+import app.automs.sdk.domain.http.AutomationResponse;
+import app.automs.sdk.domain.config.AutomationConfig;
 import lombok.*;
 import org.jetbrains.annotations.NotNull;
 

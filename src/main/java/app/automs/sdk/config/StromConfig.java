@@ -1,4 +1,4 @@
-package app.automs.internal.config;
+package app.automs.sdk.config;
 
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;

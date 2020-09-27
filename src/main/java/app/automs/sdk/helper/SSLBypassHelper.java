@@ -1,4 +1,4 @@
-package app.automs.internal.helper;
+package app.automs.sdk.helper;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
@@ -25,7 +25,7 @@ import java.security.cert.X509Certificate;
  *                     .getService();
  */
 
-public class HelperSSLBypass {
+public class SSLBypassHelper {
     public static void disableSslVerification() {
         try {
             // Create a trust manager that does not validate certificate chains

@@ -1,4 +1,4 @@
-package app.automs.internal.traits;
+package app.automs.sdk.traits;
 
 import lombok.SneakyThrows;
 import lombok.val;
