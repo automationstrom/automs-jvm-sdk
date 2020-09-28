@@ -46,6 +46,8 @@ public class ChromeDriverOptionsConfig {
                 add("--hide-scrollbars");
                 add("--metrics-recording-only");
                 add("--mute-audio");
+                add("--ignore-certificate-errors");
+                add("--ignore-ssl-errors");
             }
         };
 
