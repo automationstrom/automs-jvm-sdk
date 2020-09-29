@@ -1,21 +1,28 @@
 package app.automs.sdk.domain.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableList;
 import lombok.Data;
-import lombok.val;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import static java.util.Collections.unmodifiableMap;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
+import static java.util.Collections.unmodifiableList;
 
 @Data
+@JsonInclude(NON_EMPTY)
 public class ChromeDriverOptionsConfig {
-    Map<String, List<String>> configProfiles;
+    @JsonIgnore
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private List<String> defaultOptions;
+    private List<String> sessionOptions;
 
     {
-        val defaultProfileOptions = new ArrayList<String>() {
+        sessionOptions = ImmutableList.of();
+        defaultOptions = unmodifiableList(new ArrayList<String>() {
             {
                 // https://peter.sh/experiments/chromium-command-line-switches/#load-extension
                 // more details
@@ -49,11 +56,6 @@ public class ChromeDriverOptionsConfig {
                 add("--ignore-certificate-errors");
                 add("--ignore-ssl-errors");
             }
-        };
-
-        configProfiles = unmodifiableMap(
-                new HashMap<String, List<String>>() {{
-                    put("default", defaultProfileOptions); //
-                }});
+        });
     }
 }

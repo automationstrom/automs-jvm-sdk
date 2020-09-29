@@ -7,8 +7,7 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import java.io.BufferedInputStream;
 import java.net.URL;
 
-@Deprecated
-public class PdfTextReaderHelper {
+public class PdfHelper {
 
     public static String readPDFContent(String appUrl) throws Exception {
         val url = new URL(appUrl);

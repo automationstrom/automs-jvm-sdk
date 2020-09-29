@@ -4,45 +4,40 @@ import app.automs.sdk.config.StromProperties;
 import app.automs.sdk.domain.AutomationRecipe;
 import app.automs.sdk.domain.config.ChromeDriverOptionsConfig;
 import app.automs.sdk.domain.http.AutomationResponse;
-import app.automs.sdk.traits.HtmlParser;
-import app.automs.sdk.traits.StorageHandler;
+import app.automs.sdk.traits.Function;
+import app.automs.sdk.traits.Storable;
 import app.automs.sdk.traits.Webdriver;
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.Storage;
-import com.google.gson.Gson;
 import lombok.SneakyThrows;
 import lombok.val;
 import lombok.var;
 import org.jetbrains.annotations.NotNull;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static app.automs.sdk.domain.AutomationProcessingStatus.*;
-import static app.automs.sdk.helper.CharsetHelper.getStringBytesEncodedAs;
-import static app.automs.sdk.helper.ScreenshootHelper.takeFullPageScreenShotAsByte;
-import static java.text.MessageFormat.format;
+import static app.automs.sdk.helper.HtmlHelper.appendAbsolutPath;
+import static app.automs.sdk.helper.HtmlHelper.getStringBytesEncodedAs;
+import static app.automs.sdk.helper.ScreenshotHelper.takeFullPageScreenShotAsByte;
 import static org.openqa.selenium.By.*;
 import static org.openqa.selenium.OutputType.BYTES;
 
 @SuppressWarnings("SpringJavaAutowiredMembersInspection")
-abstract public class StromAutomation implements Webdriver, HtmlParser, StorageHandler {
+abstract public class StromAutomation implements Webdriver, Storable, Function {
 
     @Autowired
     public StromProperties properties;
     protected WebDriver driver;
+    protected JavascriptExecutor js;
+    protected TakesScreenshot ts;
     @Autowired
-    private Storage storage;
-    @Autowired
-    private Gson gson;
+    private StromStorage storage;
 
     protected abstract AutomationResponse<?> process(Map<String, String> args);
 
@@ -50,42 +45,59 @@ abstract public class StromAutomation implements Webdriver, HtmlParser, StorageH
 
     protected abstract String entryPointUrl();
 
+    // TODO make this method final, although mokito testes will break
     public AutomationResponse<?> run(AutomationRecipe recipe) {
-        AutomationResponse<?> recipeResponse;
+        AutomationResponse<?> processResponse;
+        // configure the base objects storage path
+        val objectPath = storage.parseStoragePath(recipe);
         try {
-            log.info(
-                    String.format("starting automation process, requestId%s automationId: %s",
-                            recipe.getRequestId(), recipe.getAutomationResourceId())
-            );
-            driver = getDriver(recipe.getConfig().getChromeDriverOptionsConfig());
+            // hard validation of the request resource
             checkRequestedResource(recipe);
+
+            // configure/get the browser driver
+            driver = getDriver(recipe.getConfig().getChromeDriverOptionsConfig());
+
+            // set up driver add-ons components
+            js = (JavascriptExecutor) driver;
+            ts = (TakesScreenshot) driver;
+
+            // start the automation
             driver.get(entryPointUrl());
             log.info(String.format("driver ready, automation using entry point url: [%s]", entryPointUrl()));
 
-            recipeResponse = process(recipe.getInputParams());
+            processResponse = process(recipe.getInputParams());
 
             val exitPointUrl = driver.getCurrentUrl();
+            val pageSource = driver.getPageSource();
             log.info(String.format("automation process done, last visited url: [%s - %s]", exitPointUrl, driver.getTitle()));
+            // end of the automation the automation
 
-            if (!validate(recipeResponse)) {
-                recipeResponse.setProcessingStatus(VALIDATION_FAIL);
+            // automation sanity check
+            if (!validate(processResponse)) {
+                processResponse.setProcessingStatus(VALIDATION_FAIL);
             }
 
-            store(recipe, recipeResponse, exitPointUrl, driver.getPageSource());
-            recipeResponse.setProcessingStatus(OK);
+            // automation formal storage
+            store(recipe, processResponse, exitPointUrl, pageSource, objectPath);
+            processResponse.setProcessingStatus(OK);
 
         } catch (Exception e) {
             //noinspection rawtypes
-            recipeResponse = new AutomationResponse();
-            recipeResponse.setProcessingStatus(INTERNAL_ERROR);
-            recipeResponse.setMessageResponse(e.getMessage());
+            processResponse = new AutomationResponse();
+            processResponse.setProcessingStatus(INTERNAL_ERROR);
+            processResponse.setMessageResponse(e.getMessage());
+
             log.error("Error processing recipe", e);
+            // take error screenshot
+            // manage().window().setSize(new Dimension(1920, 1057));
+            val filepath = String.format("%s-failure.png", objectPath);
+            storage.createFile(filepath, ts.getScreenshotAs(BYTES));
 
         } finally {
             driver.quit();
         }
 
-        return recipeResponse;
+        return processResponse;
     }
 
     private void checkRequestedResource(AutomationRecipe recipe) {
@@ -98,13 +110,13 @@ abstract public class StromAutomation implements Webdriver, HtmlParser, StorageH
     }
 
     @SneakyThrows
-    protected void store(final @NotNull AutomationRecipe recipe,
-                         final @NotNull AutomationResponse<?> response,
-                         final @NotNull String exitPointUrl,
-                         final @NotNull String givenPageSource) {
+    final public void store(final @NotNull AutomationRecipe recipe,
+                            final @NotNull AutomationResponse<?> response,
+                            final @NotNull String exitPointUrl,
+                            final @NotNull String givenPageSource,
+                            final @NotNull String objectPath) {
         val config = recipe.getConfig();
-        val objectName = String.format("%s-asset", recipe.getAutomationResourceId().split("/")[1]);
-        val objectPath = format("{0}/{1}/{2}", recipe.getOrderId(), recipe.getRequestId(), objectName);
+
 
         val pageConfig = config.getPageCopyConfig();
         if (pageConfig.getStorePage()) {
@@ -116,7 +128,7 @@ abstract public class StromAutomation implements Webdriver, HtmlParser, StorageH
                 pageSource = appendAbsolutPath(givenPageSource, exitPointUrl);
             }
 
-            createFile(filepath, getStringBytesEncodedAs(pageSource, pageConfig.getCharset()));
+            storage.createFile(filepath, getStringBytesEncodedAs(pageSource, pageConfig.getCharset()));
         }
 
         val shootConfig = config.getScreenshotConfig();
@@ -143,48 +155,28 @@ abstract public class StromAutomation implements Webdriver, HtmlParser, StorageH
                             break;
                     }
                     val elementBytes = driver.findElement(tartgetElement).getScreenshotAs(BYTES);
-                    createFile(filepath, elementBytes);
+                    storage.createFile(filepath, elementBytes);
                     break;
                 case FULLPAGE:
-                    createFile(filepath, takeFullPageScreenShotAsByte(driver));
+                    storage.createFile(filepath, takeFullPageScreenShotAsByte(driver));
                     break;
                 case WINDOW:
-                    val ts = (TakesScreenshot) driver;
-                    createFile(filepath, ts.getScreenshotAs(BYTES));
+                    storage.createFile(filepath, ts.getScreenshotAs(BYTES));
                     break;
             }
         }
 
-        if (config.getJsonResponseConfig().getStoreJsonResponse()) {
+        if (config.getStructuredConfig().getStoreResponseAsJson()) {
             val filepath = String.format("%s.json", objectPath);
-            createFile(filepath, getEntityAsJson(response).getBytes());
+            storage.createFile(filepath, response);
         }
     }
 
-    @SneakyThrows
-    protected void createFile(String filepath, byte[] bytes) {
-        // write gcs
-        val blobId = BlobId.of(properties.getBaseBucket(), filepath);
-        val blobInfo = BlobInfo.newBuilder(blobId).build();
-        storage.create(blobInfo, bytes);
-
-        // write local
-        val filename = filepath.split("/")[2];
-        val path = Paths.get(filename);
-        Files.write(path, bytes);
-    }
 
     protected void withDriverConfig(@NotNull WebDriver driver) {
         driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
     }
 
-    private String getEntityAsJson(final AutomationResponse<?> response) {
-        return gson.toJson(response.getResponseEntity());
-    }
-
-    private WebDriver getDriver() {
-        return getDriver(null);
-    }
 
     private WebDriver getDriver(ChromeDriverOptionsConfig config) {
         config = config == null ? new ChromeDriverOptionsConfig() : config;

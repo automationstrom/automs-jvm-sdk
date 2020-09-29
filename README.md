@@ -7,7 +7,7 @@ maven usage:
 <dependency>
   <groupId>app.automs.sdk</groupId>
   <artifactId>automs-jvm-sdk</artifactId>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <type>pom</type>
 </dependency>
 ```

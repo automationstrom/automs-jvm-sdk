@@ -11,7 +11,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URL;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.toList;
 
 public interface Webdriver {
 
@@ -21,7 +25,9 @@ public interface Webdriver {
     default ChromeOptions prepareHeadlessBrowser(final ChromeDriverOptionsConfig config) {
         val chromeOptions = new ChromeOptions();
         // more details @ https://peter.sh/experiments/chromium-command-line-switches/#load-extension
-        chromeOptions.addArguments(config.getConfigProfiles().get("default"));
+        chromeOptions
+                .addArguments(Stream.of(config.getDefaultOptions(), config.getSessionOptions())
+                        .flatMap(List::stream).collect(toList()));
         return chromeOptions;
     }
 

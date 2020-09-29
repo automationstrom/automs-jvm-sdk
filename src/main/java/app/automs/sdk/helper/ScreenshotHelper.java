@@ -9,7 +9,7 @@ import javax.imageio.ImageIO;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-public class ScreenshootHelper {
+public class ScreenshotHelper {
     public static byte[] takeFullPageScreenShotAsByte(WebDriver webDriver) throws IOException {
         val fpScreenshot =
                 new AShot()

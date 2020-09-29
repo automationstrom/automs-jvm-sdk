@@ -25,7 +25,7 @@ import java.security.cert.X509Certificate;
  *                     .getService();
  */
 
-public class SSLBypassHelper {
+public class SSLTestHelper {
     public static void disableSslVerification() {
         try {
             // Create a trust manager that does not validate certificate chains
