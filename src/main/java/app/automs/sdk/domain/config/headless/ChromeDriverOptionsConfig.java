@@ -1,4 +1,4 @@
-package app.automs.sdk.domain.config;
+package app.automs.sdk.domain.config.headless;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -8,6 +8,7 @@ import lombok.Data;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
 import static java.util.Collections.unmodifiableList;
@@ -19,6 +20,8 @@ public class ChromeDriverOptionsConfig {
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private List<String> defaultOptions;
     private List<String> sessionOptions;
+    private String httpProxy = "none";
+    private String customUserAgent = "none";
 
     {
         sessionOptions = ImmutableList.of();
@@ -36,8 +39,17 @@ public class ChromeDriverOptionsConfig {
                 add("--window-size=1366,768");
                 add("--disable-gpu");
                 add("--disable-notifications");
-//                add("--no-zygote");
+                add("--kiosk-printing");
+                add("--no-default-browser-check");
+                add("--no-crash-upload");
+
+//                add("--user-agent");
 //                add("--disable-extensions");
+
+//                Don't enforce the same-origin policy. (Used by people testing their sites.)
+//                add("--disable-web-security");
+//                Disables the use of a zygote process for forking child processes.
+//                add("--no-zygote");
 
                 //recommended
                 add("--disable-background-timer-throttling");

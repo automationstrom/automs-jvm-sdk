@@ -16,10 +16,10 @@ public class StorePageConfig {
     private Boolean enforceAbsolutLinks = true;
     private PageConfigCharset charset = PageConfigCharset.UTF8;
 
-    private Map<String, String> applyAbsolutLinksOnTargets;
+    private Map<String, String> enforcedLinksTarget;
 
     {
-        applyAbsolutLinksOnTargets = unmodifiableMap(
+        enforcedLinksTarget = unmodifiableMap(
                 new HashMap<String, String>() {{
                     put("script", "src"); // javascript
                     put("link", "href");  // css

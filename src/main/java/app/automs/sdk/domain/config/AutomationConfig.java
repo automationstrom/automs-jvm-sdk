@@ -1,5 +1,6 @@
 package app.automs.sdk.domain.config;
 
+import app.automs.sdk.domain.config.headless.ChromeDriverOptionsConfig;
 import app.automs.sdk.domain.config.store.StorePageConfig;
 import app.automs.sdk.domain.config.store.StoreScreenshotConfig;
 import app.automs.sdk.domain.config.store.StoreStructuredConfig;

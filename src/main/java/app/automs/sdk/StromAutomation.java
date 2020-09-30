@@ -2,7 +2,7 @@ package app.automs.sdk;
 
 import app.automs.sdk.config.StromProperties;
 import app.automs.sdk.domain.AutomationRecipe;
-import app.automs.sdk.domain.config.ChromeDriverOptionsConfig;
+import app.automs.sdk.domain.config.headless.ChromeDriverOptionsConfig;
 import app.automs.sdk.domain.http.AutomationResponse;
 import app.automs.sdk.traits.Function;
 import app.automs.sdk.traits.Storable;
@@ -19,12 +19,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 
 import static app.automs.sdk.domain.AutomationProcessingStatus.*;
-import static app.automs.sdk.helper.HtmlHelper.appendAbsolutPath;
 import static app.automs.sdk.helper.HtmlHelper.getStringBytesEncodedAs;
+import static app.automs.sdk.helper.HtmlHelper.prepareHtmlFile;
 import static app.automs.sdk.helper.ScreenshotHelper.takeFullPageScreenShotAsByte;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.openqa.selenium.By.*;
 import static org.openqa.selenium.OutputType.BYTES;
 
@@ -45,17 +45,17 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
 
     protected abstract String entryPointUrl();
 
-    // TODO make this method final, although mokito testes will break
+    // TODO make this method final, although Mockito tests will break
     public AutomationResponse<?> run(AutomationRecipe recipe) {
         AutomationResponse<?> processResponse;
         // configure the base objects storage path
         val objectPath = storage.parseStoragePath(recipe);
         try {
-            // hard validation of the request resource
-            checkRequestedResource(recipe);
-
             // configure/get the browser driver
             driver = getDriver(recipe.getConfig().getChromeDriverOptionsConfig());
+
+            // hard validation of the request resource
+            checkRequestedResource(recipe);
 
             // set up driver add-ons components
             js = (JavascriptExecutor) driver;
@@ -82,22 +82,33 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
             processResponse.setProcessingStatus(OK);
 
         } catch (Exception e) {
+            log.error("Error processing recipe", e);
             //noinspection rawtypes
             processResponse = new AutomationResponse();
             processResponse.setProcessingStatus(INTERNAL_ERROR);
             processResponse.setMessageResponse(e.getMessage());
 
-            log.error("Error processing recipe", e);
-            // take error screenshot
-            // manage().window().setSize(new Dimension(1920, 1057));
-            val filepath = String.format("%s-failure.png", objectPath);
-            storage.createFile(filepath, ts.getScreenshotAs(BYTES));
+            // attempt to take screenshot on error
+            attemptScreenshot(objectPath);
 
         } finally {
-            driver.quit();
+            if (driver != null) {
+                driver.quit();
+            }
         }
 
         return processResponse;
+    }
+
+    private void attemptScreenshot(String objectPath) {
+        try {
+            if (driver != null) {
+                // manage().window().setSize(new Dimension(1920, 1057));
+                val filepath = String.format("%s-failure.png", objectPath);
+                storage.createFile(filepath, ts.getScreenshotAs(BYTES));
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     private void checkRequestedResource(AutomationRecipe recipe) {
@@ -125,7 +136,7 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
             var pageSource = givenPageSource;
 
             if (pageConfig.getEnforceAbsolutLinks()) {
-                pageSource = appendAbsolutPath(givenPageSource, exitPointUrl);
+                pageSource = prepareHtmlFile(givenPageSource, exitPointUrl, pageConfig);
             }
 
             storage.createFile(filepath, getStringBytesEncodedAs(pageSource, pageConfig.getCharset()));
@@ -136,28 +147,28 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
             val filepath = String.format("%s.png", objectPath);
             switch (shootConfig.getTarget()) {
                 case ELEMENT:
-                    By tartgetElement = null;
+                    By targetElement = null;
                     switch (shootConfig.getElementType()) {
                         case XPATH:
-                            tartgetElement = xpath(shootConfig.getWithElement());
+                            targetElement = xpath(shootConfig.getWithElement());
                             break;
                         case ID:
-                            tartgetElement = id(shootConfig.getWithElement());
+                            targetElement = id(shootConfig.getWithElement());
                             break;
                         case NAME:
-                            tartgetElement = name(shootConfig.getWithElement());
+                            targetElement = name(shootConfig.getWithElement());
                             break;
                         case CLASSNAME:
-                            tartgetElement = className(shootConfig.getWithElement());
+                            targetElement = className(shootConfig.getWithElement());
                             break;
                         case SELECTOR:
-                            tartgetElement = cssSelector(shootConfig.getWithElement());
+                            targetElement = cssSelector(shootConfig.getWithElement());
                             break;
                     }
-                    val elementBytes = driver.findElement(tartgetElement).getScreenshotAs(BYTES);
+                    val elementBytes = driver.findElement(targetElement).getScreenshotAs(BYTES);
                     storage.createFile(filepath, elementBytes);
                     break;
-                case FULLPAGE:
+                case FULL_PAGE:
                     storage.createFile(filepath, takeFullPageScreenShotAsByte(driver));
                     break;
                 case WINDOW:
@@ -172,9 +183,9 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
         }
     }
 
-
-    protected void withDriverConfig(@NotNull WebDriver driver) {
-        driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
+    // override for change it
+    public void setAutomationHardTimeoutLimit(long seconds, @NotNull WebDriver driver) {
+        driver.manage().timeouts().implicitlyWait(seconds, SECONDS);
     }
 
 
@@ -182,7 +193,7 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
         config = config == null ? new ChromeDriverOptionsConfig() : config;
 
         val driver = withRemoteWebdriver(properties.getWebdriver(), prepareHeadlessBrowser(config));
-        withDriverConfig(driver);
+        setAutomationHardTimeoutLimit(15, driver);
         return driver;
     }
 }

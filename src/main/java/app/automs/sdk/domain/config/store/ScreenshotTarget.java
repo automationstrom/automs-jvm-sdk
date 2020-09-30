@@ -1,5 +1,5 @@
 package app.automs.sdk.domain.config.store;
 
 public enum ScreenshotTarget {
-    ELEMENT, FULLPAGE, WINDOW
+    ELEMENT, FULL_PAGE, WINDOW
 }
