@@ -4,7 +4,6 @@ import app.automs.sdk.domain.config.headless.ChromeDriverOptionsConfig;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.jetbrains.annotations.NotNull;
-import org.openqa.selenium.Platform;
 import org.openqa.selenium.Proxy;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -76,5 +75,5 @@ public interface Webdriver {
         return driver;
     }
 
-    void setAutomationHardTimeoutLimit(long seconds, @NotNull WebDriver driver);
+    void setAutomationHardTimeoutLimit(@NotNull WebDriver driver, long seconds);
 }

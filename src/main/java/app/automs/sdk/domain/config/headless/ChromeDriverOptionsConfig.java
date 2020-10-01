@@ -22,6 +22,7 @@ public class ChromeDriverOptionsConfig {
     private List<String> sessionOptions;
     private String httpProxy = "none";
     private String customUserAgent = "none";
+    private Integer driverStaleLimit = 20;
 
     {
         sessionOptions = ImmutableList.of();

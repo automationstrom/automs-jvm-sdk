@@ -142,6 +142,11 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
             storage.createFile(filepath, getStringBytesEncodedAs(pageSource, pageConfig.getCharset()));
         }
 
+        if (config.getStructuredConfig().getStoreResponseAsJson()) {
+            val filepath = String.format("%s.json", objectPath);
+            storage.createFile(filepath, response);
+        }
+
         val shootConfig = config.getScreenshotConfig();
         if (shootConfig.getStoreScreenshot()) {
             val filepath = String.format("%s.png", objectPath);
@@ -176,15 +181,10 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
                     break;
             }
         }
-
-        if (config.getStructuredConfig().getStoreResponseAsJson()) {
-            val filepath = String.format("%s.json", objectPath);
-            storage.createFile(filepath, response);
-        }
     }
 
     // override for change it
-    public void setAutomationHardTimeoutLimit(long seconds, @NotNull WebDriver driver) {
+    public void setAutomationHardTimeoutLimit(@NotNull WebDriver driver, long seconds) {
         driver.manage().timeouts().implicitlyWait(seconds, SECONDS);
     }
 
@@ -193,7 +193,7 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
         config = config == null ? new ChromeDriverOptionsConfig() : config;
 
         val driver = withRemoteWebdriver(properties.getWebdriver(), prepareHeadlessBrowser(config));
-        setAutomationHardTimeoutLimit(15, driver);
+        setAutomationHardTimeoutLimit(driver, config.getDriverStaleLimit());
         return driver;
     }
 }

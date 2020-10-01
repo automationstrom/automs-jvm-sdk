@@ -10,11 +10,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class ScreenshotHelper {
-    public static byte[] takeFullPageScreenShotAsByte(WebDriver webDriver) throws IOException {
+    public static byte[] takeFullPageScreenShotAsByte(WebDriver driver) throws IOException {
         val fpScreenshot =
                 new AShot()
                         .shootingStrategy(ShootingStrategies.viewportPasting(1000))
-                        .takeScreenshot(webDriver);
+                        .takeScreenshot(driver);
 
         val originalImage = fpScreenshot.getImage();
 
