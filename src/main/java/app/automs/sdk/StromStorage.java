@@ -13,7 +13,11 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
 import static java.text.MessageFormat.format;
+import static java.time.Instant.now;
 
 @Component
 public class StromStorage {
@@ -32,6 +36,15 @@ public class StromStorage {
         val blobId = BlobId.of(properties.getBaseBucket(), filepath);
         val blobInfo = BlobInfo.newBuilder(blobId).build();
         storage.create(blobInfo, bytes);
+
+        // write local
+        val context = System.getenv("CONTEXT") == null ? "local" : System.getenv("CONTEXT");
+        if (context.equalsIgnoreCase("local") || context.equalsIgnoreCase("compose")) {
+            val filename = filepath.split("/")[2];
+            val instant = now().getEpochSecond();
+            val path = Paths.get(String.format("%d-%s", instant, filename));
+            Files.write(path, bytes);
+        }
     }
 
     public void createFile(String filepath, @NotNull AutomationResponse<?> response) {
