@@ -111,7 +111,7 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
         }
     }
 
-    private void checkRequestedResource(AutomationRecipe recipe) {
+    private void checkRequestedResource(@NotNull AutomationRecipe recipe) {
         val requestedResourceId = recipe.getAutomationResourceId();
         if (!Objects.equals(requestedResourceId, properties.getResourceId())) {
             throw new IllegalArgumentException(
@@ -185,7 +185,9 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
 
     // override for change it
     public void setAutomationHardTimeoutLimit(@NotNull WebDriver driver, long seconds) {
-        driver.manage().timeouts().implicitlyWait(seconds, SECONDS);
+        val driverTimeoutConf = driver.manage().timeouts();
+        driverTimeoutConf.implicitlyWait(seconds, SECONDS);
+//        driverTimeoutConf.pageLoadTimeout(seconds, SECONDS);
     }
 
 
@@ -193,7 +195,7 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
         config = config == null ? new ChromeDriverOptionsConfig() : config;
 
         val driver = withRemoteWebdriver(properties.getWebdriver(), prepareHeadlessBrowser(config));
-        setAutomationHardTimeoutLimit(driver, config.getDriverStaleLimit());
+        setAutomationHardTimeoutLimit(driver, config.getElementSearchTimeout());
         return driver;
     }
 }

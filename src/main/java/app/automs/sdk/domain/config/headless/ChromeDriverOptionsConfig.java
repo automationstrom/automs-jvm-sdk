@@ -8,7 +8,6 @@ import lombok.Data;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
 import static java.util.Collections.unmodifiableList;
@@ -22,8 +21,9 @@ public class ChromeDriverOptionsConfig {
     private List<String> sessionOptions;
     private String httpProxy = "none";
     private String customUserAgent = "none";
-    private Integer driverStaleLimit = 20;
+    private Integer elementSearchTimeout = 5;
 
+    //    private Integer pageLoadTimeout = 20;
     {
         sessionOptions = ImmutableList.of();
         defaultOptions = unmodifiableList(new ArrayList<String>() {
