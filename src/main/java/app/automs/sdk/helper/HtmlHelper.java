@@ -1,7 +1,7 @@
 package app.automs.sdk.helper;
 
-import app.automs.sdk.domain.config.store.PageConfigCharset;
-import app.automs.sdk.domain.config.store.StorePageConfig;
+import app.automs.sdk.domain.config.store.PageCopyConfigCharset;
+import app.automs.sdk.domain.config.store.PageCopyConfig;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.DataNode;
@@ -13,11 +13,13 @@ import static java.nio.charset.StandardCharsets.*;
 import static org.apache.commons.codec.binary.StringUtils.*;
 
 public class HtmlHelper {
-    public static String prepareHtmlFile(String html, @NotNull String exitPointUrl, StorePageConfig config) {
+    public static String prepareHtmlFile(String html, @NotNull String exitPointUrl, PageCopyConfig config) {
         Document doc = Jsoup.parse(html, exitPointUrl);
 
-        config.getEnforcedLinksTarget()
-                .forEach((element, attribute) -> parseAbsolutAt(doc.select(element), attribute));
+        config.getReplacingAbsolutLinksOnElements()
+                .forEach((element, attributes) ->
+                        attributes.forEach(attribute -> parseAbsolutAt(doc.select(element), attribute))
+                );
 
         injectJs(doc,
                 "function addScript(url) {\n" +
@@ -27,7 +29,7 @@ public class HtmlHelper {
                         "    document.head.appendChild(script);\n" +
                         "}");
 
-        switch (config.getCharset()) {
+        switch (config.getUsingCharset()) {
             case UTF8:
                 doc.charset(UTF_8.newDecoder().charset());
                 break;
@@ -62,7 +64,7 @@ public class HtmlHelper {
         }
     }
 
-    public static byte[] getStringBytesEncodedAs(String rawString, PageConfigCharset configCharset) {
+    public static byte[] getStringBytesEncodedAs(String rawString, PageCopyConfigCharset configCharset) {
         byte[] bytes = null;
 
         switch (configCharset) {

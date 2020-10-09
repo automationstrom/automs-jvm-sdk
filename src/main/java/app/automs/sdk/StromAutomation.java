@@ -3,11 +3,11 @@ package app.automs.sdk;
 import app.automs.sdk.config.StromProperties;
 import app.automs.sdk.domain.AutomationRecipe;
 import app.automs.sdk.domain.config.headless.ChromeDriverOptionsConfig;
-import app.automs.sdk.domain.config.store.StoreScreenshotConfig;
+import app.automs.sdk.domain.config.store.PageScreenCaptureConfig;
 import app.automs.sdk.domain.http.AutomationResponse;
-import app.automs.sdk.domain.store.AdditionalFile;
+import app.automs.sdk.domain.store.SessionFile;
 import app.automs.sdk.domain.store.StoreContainer;
-import app.automs.sdk.traits.Function;
+import app.automs.sdk.traits.AutomationFunction;
 import app.automs.sdk.traits.Storable;
 import app.automs.sdk.traits.Webdriver;
 import lombok.SneakyThrows;
@@ -21,7 +21,6 @@ import org.openqa.selenium.WebDriver;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 import static app.automs.sdk.domain.AutomationProcessingStatus.*;
@@ -34,7 +33,7 @@ import static org.openqa.selenium.By.*;
 import static org.openqa.selenium.OutputType.BYTES;
 
 @SuppressWarnings("SpringJavaAutowiredMembersInspection")
-abstract public class StromAutomation implements Webdriver, Storable, Function {
+abstract public class StromAutomation implements AutomationFunction, Webdriver, Storable {
 
     @Autowired
     public StromProperties properties;
@@ -44,14 +43,8 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
     @Autowired
     private StromStorage storage;
 
-    protected abstract AutomationResponse<?> process(Map<String, String> args);
-
-    protected abstract Boolean validate(@NotNull AutomationResponse<?> response);
-
-    protected abstract String entryPointUrl();
-
     // TODO make this method final, although Mockito tests will break
-    public AutomationResponse<?> run(AutomationRecipe recipe) {
+    public AutomationResponse<?> run(@NotNull AutomationRecipe recipe) {
         AutomationResponse<?> processResponse;
         // configure the base objects storage path
         val objectPath = storage.parseStoragePath(recipe);
@@ -83,11 +76,7 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
             }
 
             // automation formal storage
-            store(new StoreContainer(recipe,
-                    processResponse,
-                    exitPointUrl,
-                    pageSource,
-                    objectPath));
+            store(new StoreContainer(recipe.getConfig(), processResponse, exitPointUrl, pageSource, objectPath));
 
             processResponse.setProcessingStatus(OK);
 
@@ -96,7 +85,7 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
             //noinspection rawtypes
             processResponse = new AutomationResponse();
             processResponse.setProcessingStatus(INTERNAL_ERROR);
-            processResponse.setMessageResponse(e.getMessage());
+            processResponse.setCustomResponse(e.getMessage());
 
             // attempt to take screenshot on error
             attemptScreenshot(objectPath);
@@ -132,52 +121,52 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
 
 
     final public void store(final @NotNull StoreContainer container) {
-        val config = container.getRecipe().getConfig();
+        val config = container.getConfig();
         val pageConfig = config.getPageCopyConfig();
         val objectPath = container.getObjectPath();
 
         // html page
-        if (pageConfig.getStorePage()) {
+        if (pageConfig.getEnablePageCopy()) {
             val filepath = String.format("%s.html", objectPath);
             var pageSource = container.getGivenPageSource();
 
-            if (pageConfig.getEnforceAbsolutLinks()) {
+            if (pageConfig.getUsingAbsolutLinks()) {
                 pageSource = prepareHtmlFile(pageSource, container.getExitPointUrl(), pageConfig);
             }
 
-            storage.createFile(filepath, getStringBytesEncodedAs(pageSource, pageConfig.getCharset()));
+            storage.createFile(filepath, getStringBytesEncodedAs(pageSource, pageConfig.getUsingCharset()));
         }
 
         // json response
-        if (config.getStructuredConfig().getStoreResponseAsJson()) {
+        if (config.getPageCopyConfig().getEnableStructuredResponseCopy()) {
             val filepath = String.format("%s.json", objectPath);
             storage.createFile(filepath, container.getResponse());
         }
 
         // screenshot
-        val screenshotConfig = config.getScreenshotConfig();
-        if (screenshotConfig.getStoreScreenshot()) {
+        val screenshotConfig = config.getPageCaptureConfig();
+        if (screenshotConfig.getEnableScreenCapture()) {
             storeScreenshot(screenshotConfig, objectPath);
         }
 
         // store arbitrary given bytes
-        val userFiles = container.getRecipe().getResponse().getAdditionalFile();
-        storeAutomationDefinedFiles(objectPath, userFiles);
+        val sessionFiles = container.getResponse().getSessionFiles();
+        storeAutomationSessionFiles(objectPath, sessionFiles);
     }
 
-    private void storeAutomationDefinedFiles(String objectPath, List<AdditionalFile> userFiles) {
-        if (!userFiles.isEmpty()) {
+    private void storeAutomationSessionFiles(String objectPath, List<SessionFile> sessionFiles) {
+        if (!sessionFiles.isEmpty()) {
             var index = 0;
             // user files qty hard limit
-            assert !(userFiles.size() > 10);
-            for (val userFile : userFiles) {
+            assert !(sessionFiles.size() > 10);
+            for (val sessionFile : sessionFiles) {
                 // hard size in bytes 5,25 MB per user file
-                assert !(userFile.getContent().length > 5_500_000);
-                val suffix = userFile.getLabel();
-                val extension = userFile.getExtension().getValue();
+                assert !(sessionFile.getContent().length > 5_500_000);
+                val suffix = sessionFile.getLabel();
+                val extension = sessionFile.getExtension().getValue();
                 // bucket/order/request/1602199186-sample-automation-asset-udf1.pdf
-                val filepath = format("{0}-{1}{2}.{3}", objectPath, suffix, ++index, extension);
-                storage.createFile(filepath, userFile.getContent());
+                val filepath = format("{0}-{1}{2}{3}", objectPath, suffix, ++index, extension);
+                storage.createFile(filepath, sessionFile.getContent());
             }
         }
 //    range(0, userFiles.size())
@@ -187,27 +176,27 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
     }
 
     @SneakyThrows
-    private void storeScreenshot(final StoreScreenshotConfig config, String objectPath) {
-        assert config.getStoreScreenshot() : "store call not allowed, since storage config = false";
+    private void storeScreenshot(final PageScreenCaptureConfig config, String objectPath) {
+        assert config.getEnableScreenCapture() : "store call not allowed, since storage config = false";
         val filepath = String.format("%s.png", objectPath);
-        switch (config.getTarget()) {
+        switch (config.getCaptureType()) {
             case ELEMENT:
                 By targetElement = null;
                 switch (config.getElementType()) {
                     case XPATH:
-                        targetElement = xpath(config.getWithElement());
+                        targetElement = xpath(config.getTargetElement());
                         break;
                     case ID:
-                        targetElement = id(config.getWithElement());
+                        targetElement = id(config.getTargetElement());
                         break;
                     case NAME:
-                        targetElement = name(config.getWithElement());
+                        targetElement = name(config.getTargetElement());
                         break;
                     case CLASSNAME:
-                        targetElement = className(config.getWithElement());
+                        targetElement = className(config.getTargetElement());
                         break;
                     case SELECTOR:
-                        targetElement = cssSelector(config.getWithElement());
+                        targetElement = cssSelector(config.getTargetElement());
                         break;
                 }
                 val elementBytes = driver.findElement(targetElement).getScreenshotAs(BYTES);

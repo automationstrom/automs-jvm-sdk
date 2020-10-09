@@ -39,12 +39,19 @@ public class StromStorage {
 
         // write local
         val context = System.getenv("CONTEXT") == null ? "local" : System.getenv("CONTEXT");
-        if (context.equalsIgnoreCase("local") || context.equalsIgnoreCase("compose")) {
-            val filename = filepath.split("/")[2];
-            val instant = now().getEpochSecond();
-            val path = Paths.get(String.format("%d-%s", instant, filename));
-            Files.write(path, bytes);
+        // strip file path
+        val filename = filepath.split("/")[2];
+        if (context.equalsIgnoreCase("local")) {
+            Files.write(Paths.get(parseDevPath(filename)), bytes);
+        } else if ( context.equalsIgnoreCase("compose")) {
+            Files.write(Paths.get(filename), bytes);
         }
+    }
+
+    private String parseDevPath(String filename) {
+        val splitFileName = filename.split("asset");
+        val instant = now().getEpochSecond();
+        return String.format("%s%d-asset%s", splitFileName[0], instant, splitFileName[1]);
     }
 
     public void createFile(String filepath, @NotNull AutomationResponse<?> response) {

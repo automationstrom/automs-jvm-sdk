@@ -7,6 +7,6 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @Data
 @JsonInclude(NON_NULL)
-public class StoreStructuredConfig {
-    private Boolean storeResponseAsJson = true;
+public class PageStructuredConfig {
+    private Boolean storeStructuredResponse = true;
 }

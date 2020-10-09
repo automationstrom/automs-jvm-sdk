@@ -1,5 +1,5 @@
 package app.automs.sdk.domain.config.store;
 
-public enum ScreenshotElementType {
+public enum ScreenCaptureElementType {
     XPATH, ID, NAME, CLASSNAME, SELECTOR
 }

@@ -1,6 +1,6 @@
 package app.automs.sdk.domain.store;
 
-import app.automs.sdk.domain.AutomationRecipe;
+import app.automs.sdk.domain.config.AutomationConfig;
 import app.automs.sdk.domain.http.AutomationResponse;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,7 +10,7 @@ import org.jetbrains.annotations.NotNull;
 @AllArgsConstructor
 public class StoreContainer {
     private @NotNull
-    AutomationRecipe recipe;
+    AutomationConfig config;
     private @NotNull
     AutomationResponse<?> response;
     private @NotNull
