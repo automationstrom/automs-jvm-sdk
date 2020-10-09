@@ -4,6 +4,7 @@ import app.automs.sdk.config.StromProperties;
 import app.automs.sdk.domain.AutomationRecipe;
 import app.automs.sdk.domain.config.headless.ChromeDriverOptionsConfig;
 import app.automs.sdk.domain.config.store.PageScreenCaptureConfig;
+import app.automs.sdk.domain.http.AutomationInput;
 import app.automs.sdk.domain.http.AutomationResponse;
 import app.automs.sdk.domain.store.SessionFile;
 import app.automs.sdk.domain.store.StoreContainer;
@@ -43,17 +44,25 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
     @Autowired
     private StromStorage storage;
 
+    protected AutomationInput before(@NotNull AutomationRecipe recipe) {
+        return recipe.getAutomationInput();
+    }
+
     // TODO make this method final, although Mockito tests will break
     public AutomationResponse<?> run(@NotNull AutomationRecipe recipe) {
         AutomationResponse<?> processResponse;
         // configure the base objects storage path
         val objectPath = storage.parseStoragePath(recipe);
         try {
-            // configure/get the browser driver
-            driver = getDriver(recipe.getConfig().getChromeDriverOptionsConfig());
 
+            // run pre-process function
+            val input = before(recipe);
             // hard validation of the request resource
             checkRequestedResource(recipe);
+
+
+            // configure/get the browser driver
+            driver = getDriver(recipe.getConfig().getChromeDriverOptionsConfig());
 
             // set up driver add-ons components
             js = (JavascriptExecutor) driver;
@@ -63,7 +72,7 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
             driver.get(entryPointUrl());
             log.info(String.format("driver ready, automation using entry point url: [%s]", entryPointUrl()));
 
-            processResponse = process(recipe.getInputParams());
+            processResponse = process(input);
 
             val exitPointUrl = driver.getCurrentUrl();
             val pageSource = driver.getPageSource();

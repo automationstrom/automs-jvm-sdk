@@ -1,14 +1,14 @@
 package app.automs.sdk.domain;
 
+import app.automs.sdk.domain.config.AutomationConfig;
+import app.automs.sdk.domain.http.AutomationInput;
 import app.automs.sdk.domain.http.AutomationRequest;
 import app.automs.sdk.domain.http.AutomationResponse;
-import app.automs.sdk.domain.config.AutomationConfig;
-import lombok.*;
+import lombok.Data;
+import lombok.val;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.ZonedDateTime;
-import java.util.Collections;
-import java.util.Map;
 
 import static java.time.ZoneOffset.UTC;
 import static java.time.format.DateTimeFormatter.ISO_INSTANT;
@@ -19,16 +19,16 @@ public class AutomationRecipe {
     private String orderId;
     private String requestId;
     private String automationResourceId;
-    private Map<String, String> inputParams = Collections.emptyMap();
+    private AutomationInput automationInput = new AutomationInput();
     private AutomationConfig config = new AutomationConfig();
     private AutomationResponse<?> response = AutomationResponse.EMPTY_RESPONSE;
 
     @NotNull
-    public static AutomationRecipe createFrom(AutomationRequest request) {
+    public static AutomationRecipe createFrom(@NotNull AutomationRequest request) {
         val recipe = new AutomationRecipe();
         recipe.setOrderId(request.getOrderId());
         recipe.setRequestId(request.getRequestId());
-        recipe.setInputParams(request.getInputParams());
+        recipe.setAutomationInput(AutomationInput.create(request.getInputParams()));
         recipe.setAutomationResourceId(request.getAutomationResourceId());
         recipe.config = request.getConfig();
         return recipe;
