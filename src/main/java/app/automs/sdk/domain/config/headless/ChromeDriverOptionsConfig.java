@@ -20,7 +20,7 @@ public class ChromeDriverOptionsConfig {
     private List<String> defaultOptions;
     private List<String> sessionOptions;
     private String httpProxy = "none";
-    private String customUserAgent = "none";
+    private String customUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36";
     private Integer elementSearchTimeout = 5;
 
     //    private Integer pageLoadTimeout = 20;

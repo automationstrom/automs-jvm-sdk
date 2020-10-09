@@ -3,7 +3,10 @@ package app.automs.sdk;
 import app.automs.sdk.config.StromProperties;
 import app.automs.sdk.domain.AutomationRecipe;
 import app.automs.sdk.domain.config.headless.ChromeDriverOptionsConfig;
+import app.automs.sdk.domain.config.store.StoreScreenshotConfig;
 import app.automs.sdk.domain.http.AutomationResponse;
+import app.automs.sdk.domain.store.AdditionalFile;
+import app.automs.sdk.domain.store.StoreContainer;
 import app.automs.sdk.traits.Function;
 import app.automs.sdk.traits.Storable;
 import app.automs.sdk.traits.Webdriver;
@@ -17,6 +20,7 @@ import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -24,6 +28,7 @@ import static app.automs.sdk.domain.AutomationProcessingStatus.*;
 import static app.automs.sdk.helper.HtmlHelper.getStringBytesEncodedAs;
 import static app.automs.sdk.helper.HtmlHelper.prepareHtmlFile;
 import static app.automs.sdk.helper.ScreenshotHelper.takeFullPageScreenShotAsByte;
+import static java.text.MessageFormat.format;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.openqa.selenium.By.*;
 import static org.openqa.selenium.OutputType.BYTES;
@@ -78,7 +83,12 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
             }
 
             // automation formal storage
-            store(recipe, processResponse, exitPointUrl, pageSource, objectPath);
+            store(new StoreContainer(recipe,
+                    processResponse,
+                    exitPointUrl,
+                    pageSource,
+                    objectPath));
+
             processResponse.setProcessingStatus(OK);
 
         } catch (Exception e) {
@@ -120,66 +130,95 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
         }
     }
 
-    @SneakyThrows
-    final public void store(final @NotNull AutomationRecipe recipe,
-                            final @NotNull AutomationResponse<?> response,
-                            final @NotNull String exitPointUrl,
-                            final @NotNull String givenPageSource,
-                            final @NotNull String objectPath) {
-        val config = recipe.getConfig();
 
-
+    final public void store(final @NotNull StoreContainer container) {
+        val config = container.getRecipe().getConfig();
         val pageConfig = config.getPageCopyConfig();
+        val objectPath = container.getObjectPath();
+
+        // html page
         if (pageConfig.getStorePage()) {
             val filepath = String.format("%s.html", objectPath);
-
-            var pageSource = givenPageSource;
+            var pageSource = container.getGivenPageSource();
 
             if (pageConfig.getEnforceAbsolutLinks()) {
-                pageSource = prepareHtmlFile(givenPageSource, exitPointUrl, pageConfig);
+                pageSource = prepareHtmlFile(pageSource, container.getExitPointUrl(), pageConfig);
             }
 
             storage.createFile(filepath, getStringBytesEncodedAs(pageSource, pageConfig.getCharset()));
         }
 
+        // json response
         if (config.getStructuredConfig().getStoreResponseAsJson()) {
             val filepath = String.format("%s.json", objectPath);
-            storage.createFile(filepath, response);
+            storage.createFile(filepath, container.getResponse());
         }
 
-        val shootConfig = config.getScreenshotConfig();
-        if (shootConfig.getStoreScreenshot()) {
-            val filepath = String.format("%s.png", objectPath);
-            switch (shootConfig.getTarget()) {
-                case ELEMENT:
-                    By targetElement = null;
-                    switch (shootConfig.getElementType()) {
-                        case XPATH:
-                            targetElement = xpath(shootConfig.getWithElement());
-                            break;
-                        case ID:
-                            targetElement = id(shootConfig.getWithElement());
-                            break;
-                        case NAME:
-                            targetElement = name(shootConfig.getWithElement());
-                            break;
-                        case CLASSNAME:
-                            targetElement = className(shootConfig.getWithElement());
-                            break;
-                        case SELECTOR:
-                            targetElement = cssSelector(shootConfig.getWithElement());
-                            break;
-                    }
-                    val elementBytes = driver.findElement(targetElement).getScreenshotAs(BYTES);
-                    storage.createFile(filepath, elementBytes);
-                    break;
-                case FULL_PAGE:
-                    storage.createFile(filepath, takeFullPageScreenShotAsByte(driver));
-                    break;
-                case WINDOW:
-                    storage.createFile(filepath, ts.getScreenshotAs(BYTES));
-                    break;
+        // screenshot
+        val screenshotConfig = config.getScreenshotConfig();
+        if (screenshotConfig.getStoreScreenshot()) {
+            storeScreenshot(screenshotConfig, objectPath);
+        }
+
+        // store arbitrary given bytes
+        val userFiles = container.getRecipe().getResponse().getAdditionalFile();
+        storeAutomationDefinedFiles(objectPath, userFiles);
+    }
+
+    private void storeAutomationDefinedFiles(String objectPath, List<AdditionalFile> userFiles) {
+        if (!userFiles.isEmpty()) {
+            var index = 0;
+            // user files qty hard limit
+            assert !(userFiles.size() > 10);
+            for (val userFile : userFiles) {
+                // hard size in bytes 5,25 MB per user file
+                assert !(userFile.getContent().length > 5_500_000);
+                val suffix = userFile.getLabel();
+                val extension = userFile.getExtension().getValue();
+                // bucket/order/request/1602199186-sample-automation-asset-udf1.pdf
+                val filepath = format("{0}-{1}{2}.{3}", objectPath, suffix, ++index, extension);
+                storage.createFile(filepath, userFile.getContent());
             }
+        }
+//    range(0, userFiles.size())
+//            .mapToObj(index -> Pair.of(index, userFiles.get(index)))
+//            .filter(pair -> pair.getRight().getContent().length <= 5_500_000)
+//            .forEachOrdered(s -> s);
+    }
+
+    @SneakyThrows
+    private void storeScreenshot(final StoreScreenshotConfig config, String objectPath) {
+        assert config.getStoreScreenshot() : "store call not allowed, since storage config = false";
+        val filepath = String.format("%s.png", objectPath);
+        switch (config.getTarget()) {
+            case ELEMENT:
+                By targetElement = null;
+                switch (config.getElementType()) {
+                    case XPATH:
+                        targetElement = xpath(config.getWithElement());
+                        break;
+                    case ID:
+                        targetElement = id(config.getWithElement());
+                        break;
+                    case NAME:
+                        targetElement = name(config.getWithElement());
+                        break;
+                    case CLASSNAME:
+                        targetElement = className(config.getWithElement());
+                        break;
+                    case SELECTOR:
+                        targetElement = cssSelector(config.getWithElement());
+                        break;
+                }
+                val elementBytes = driver.findElement(targetElement).getScreenshotAs(BYTES);
+                storage.createFile(filepath, elementBytes);
+                break;
+            case FULL_PAGE:
+                storage.createFile(filepath, takeFullPageScreenShotAsByte(driver));
+                break;
+            case WINDOW:
+                storage.createFile(filepath, ts.getScreenshotAs(BYTES));
+                break;
         }
     }
 
@@ -187,13 +226,12 @@ abstract public class StromAutomation implements Webdriver, Storable, Function {
     public void setAutomationHardTimeoutLimit(@NotNull WebDriver driver, long seconds) {
         val driverTimeoutConf = driver.manage().timeouts();
         driverTimeoutConf.implicitlyWait(seconds, SECONDS);
-//        driverTimeoutConf.pageLoadTimeout(seconds, SECONDS);
+        //driverTimeoutConf.pageLoadTimeout(seconds, SECONDS);
     }
 
 
     private WebDriver getDriver(ChromeDriverOptionsConfig config) {
         config = config == null ? new ChromeDriverOptionsConfig() : config;
-
         val driver = withRemoteWebdriver(properties.getWebdriver(), prepareHeadlessBrowser(config));
         setAutomationHardTimeoutLimit(driver, config.getElementSearchTimeout());
         return driver;

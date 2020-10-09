@@ -20,7 +20,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.openqa.selenium.logging.LogType.*;
-import static org.openqa.selenium.remote.CapabilityType.*;
+import static org.openqa.selenium.remote.CapabilityType.LOGGING_PREFS;
 
 public interface Webdriver {
 
@@ -38,13 +38,16 @@ public interface Webdriver {
 
         // chromeOptions.setUnhandledPromptBehaviour(UnexpectedAlertBehaviour.DISMISS_AND_NOTIFY);
 
-        // add default user agent
-        val defaultUserAgent =
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-                        "AppleWebKit/537.36 (KHTML, like Gecko) " +
-                        "Chrome/78.0.3904.108 Safari/537.36";
+        // define proxy config
+        if (!config.getHttpProxy().equals("none")) {
+            // selenium wrapper, some webdriver need explicit configuration,
+            proxy.setHttpProxy(config.getHttpProxy());
+            chromeOptions.setProxy(proxy);
+            chromeOptions.addArguments("--proxy-server", config.getHttpProxy());
+        }
 
-        chromeOptions.addArguments("--user-agent", defaultUserAgent);
+        // define user-agent
+        chromeOptions.addArguments("--user-agent", config.getCustomUserAgent());
 
         // merge default and client session chrome options
         chromeOptions
@@ -57,12 +60,6 @@ public interface Webdriver {
         logging.enable(DRIVER, Level.INFO);
 
         chromeOptions.setCapability(LOGGING_PREFS, logging);
-
-        // define proxy config
-        if (!Objects.equals(config.getHttpProxy(), "none")) {
-            proxy.setHttpProxy(config.getHttpProxy());
-            chromeOptions.setProxy(proxy);
-        }
 
         return chromeOptions;
     }
