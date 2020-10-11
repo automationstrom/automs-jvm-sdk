@@ -15,7 +15,7 @@ public class StromProperties {
     @NotBlank
     private String resourceId;
     @NotBlank
-    private String webdriverLb;
+    private String webdriver;
     @NotBlank
     private String webdriverFb;
     @NotBlank

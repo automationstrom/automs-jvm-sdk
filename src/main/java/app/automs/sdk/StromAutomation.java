@@ -248,7 +248,7 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
         config = (config == null) ? new ChromeDriverOptionsConfig() : config;
 
         val driver = withRemoteWebdriver(
-                resolveEndpoint(properties.getWebdriverLb()), prepareHeadlessBrowser(config)
+                resolveEndpoint(properties.getWebdriver()), prepareHeadlessBrowser(config)
         );
 
         setAutomationHardTimeoutLimit(driver, config.getElementSearchTimeout());
@@ -257,13 +257,13 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
 
     private String resolveEndpoint(String uri) {
         try {
-            endpoint = context.isCloud() ? Unirest.get(uri).asString().getBody() : uri;
-            log.info(String.format("using lb-endpoint [%s]", endpoint));
-            return endpoint;
+            endpoint = context.isCloud() || uri.endsWith("9090") ? Unirest.get(uri).asString().getBody() : uri;
+            assert !endpoint.contains("Bad Gateway") : "LB Fail: Bad Gateway";
         } catch (Exception e) {
+            endpoint = properties.getWebdriverFb();
             log.error(String.format("using fb-endpoint [%s]", endpoint), e);
-            return properties.getWebdriverFb();
         }
-
+        log.info(String.format("using endpoint [%s]", endpoint));
+        return endpoint;
     }
 }

@@ -1,0 +1,81 @@
+version: "2"
+
+services:
+  webdriver1:
+    image: browserless/chrome:1.39.0-chrome-stable
+    hostname: webdriver1
+    container_name: automs-webdriver1
+    environment:
+      - DEBUG=browserless/chrome*
+      - ENABLE_CORS=true
+      - DEFAULT_IGNORE_HTTPS_ERRORS=true
+      - CONNECTION_TIMEOUT=120000
+      - PREBOOT_CHROME=true
+      - KEEP_ALIVE=true
+      - CHROME_REFRESH_TIME=1800000
+      - ENABLE_API_GET=true
+    ports:
+      - "3000:3000"
+    networks:
+      - network-local
+
+  webdriver2:
+    image: browserless/chrome:1.39.0-chrome-stable
+    hostname: webdriver2
+    container_name: automs-webdriver2
+    environment:
+      - DEBUG=browserless/chrome*
+      - ENABLE_CORS=true
+      - DEFAULT_IGNORE_HTTPS_ERRORS=true
+      - CONNECTION_TIMEOUT=120000
+      - PREBOOT_CHROME=true
+      - KEEP_ALIVE=true
+      - CHROME_REFRESH_TIME=1800000
+      - ENABLE_API_GET=true
+    ports:
+      - "3001:3000"
+    networks:
+      - network-local
+
+  webdriver3:
+    image: browserless/chrome:1.39.0-chrome-stable
+    hostname: webdriver3
+    container_name: automs-webdriver3
+    environment:
+      - DEBUG=browserless/chrome*
+      - ENABLE_CORS=true
+      - DEFAULT_IGNORE_HTTPS_ERRORS=true
+      - CONNECTION_TIMEOUT=120000
+      - PREBOOT_CHROME=true
+      - KEEP_ALIVE=true
+      - CHROME_REFRESH_TIME=1800000
+      - ENABLE_API_GET=true
+    ports:
+      - "3002:3000"
+    networks:
+      - network-local
+
+  etcd:
+    image: bitnami/etcd:latest
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+    ports:
+      - 2379:2379
+      - 2380:2380
+    networks:
+      - network-local
+
+#  docker run -it \
+#  -v $(PWD)/webdriver.eskip:/webdriver.eskip \
+#  -p 9090:9090 \
+#  -p 9911:9911 \
+#  registry.opensource.zalan.do/pathfinder/skipper:latest skipper -routes-file webdriver.eskip
+
+volumes:
+  etcd_data:
+    driver: local
+
+networks:
+  network-local:
+
