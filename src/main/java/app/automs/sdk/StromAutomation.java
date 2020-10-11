@@ -32,6 +32,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.openqa.selenium.By.*;
 import static org.openqa.selenium.OutputType.BYTES;
 
+// @Scope(value = "prototype", proxyMode = ScopedProxyMode.TARGET_CLASS)
+// http://www.javabyexamples.com/scoped-beans-as-dependencies-in-spring
 @SuppressWarnings({"SpringJavaAutowiredMembersInspection", "unused"})
 abstract public class StromAutomation implements AutomationFunction, Webdriver, Storable {
 

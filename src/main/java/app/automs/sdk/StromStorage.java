@@ -12,7 +12,6 @@ import kong.unirest.Unirest;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.nio.file.Files;
@@ -25,14 +24,17 @@ import static java.time.Instant.now;
 @Component
 public class StromStorage {
 
-    @Autowired
-    public StromProperties properties;
-    @Autowired
-    private Storage storage;
-    @Autowired
-    private EnvContext context;
-    @Autowired
-    private Gson gson;
+    public final StromProperties properties;
+    private final Storage storage;
+    private final EnvContext context;
+    private final Gson gson;
+
+    public StromStorage(StromProperties properties, Storage storage, EnvContext context, Gson gson) {
+        this.properties = properties;
+        this.storage = storage;
+        this.context = context;
+        this.gson = gson;
+    }
 
 
     @SneakyThrows
@@ -67,9 +69,13 @@ public class StromStorage {
         return format("{0}/{1}/{2}", recipe.getOrderId(), recipe.getRequestId(), objectName);
     }
 
+    // TODO better error handling, if 404 throw error?
     public byte[] getDownloadedFile(String endpoint, String requestId, String filename) {
         return Unirest.get(
-                format("{0}/{1}/{2}", String.format("%s/workspace", endpoint), requestId, filename)
+                format("{0}/{1}/{2}",
+                        String.format("%s/workspace", endpoint.replace("/webdriver", "")),
+                        requestId,
+                        filename)
         ).asBytes().getBody();
     }
 
