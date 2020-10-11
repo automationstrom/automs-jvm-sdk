@@ -11,6 +11,7 @@ import java.util.List;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
 import static java.util.Collections.unmodifiableList;
+import static java.util.UUID.randomUUID;
 
 @Data
 @JsonInclude(NON_EMPTY)
@@ -23,6 +24,8 @@ public class ChromeDriverOptionsConfig {
     private String customUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
             "(KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36";
     private Integer elementSearchTimeout = 5;
+    private String trackingId = randomUUID().toString();
+    private Boolean quitSession = false;
 
     //    private Integer pageLoadTimeout = 20;
     {

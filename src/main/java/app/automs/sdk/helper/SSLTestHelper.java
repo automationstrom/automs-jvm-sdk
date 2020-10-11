@@ -1,8 +1,5 @@
 package app.automs.sdk.helper;
 
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.PropertySource;
-
 import javax.net.ssl.*;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
@@ -25,6 +22,7 @@ import java.security.cert.X509Certificate;
  *                     .getService();
  */
 
+@SuppressWarnings("unused")
 public class SSLTestHelper {
     public static void disableSslVerification() {
         try {

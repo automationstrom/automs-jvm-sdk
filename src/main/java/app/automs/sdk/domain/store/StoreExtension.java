@@ -1,5 +1,6 @@
 package app.automs.sdk.domain.store;
 
+@SuppressWarnings("unused")
 public enum StoreExtension {
     PDF(".pdf"),
     HTML(".html"),

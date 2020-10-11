@@ -23,6 +23,7 @@ public class AutomationRecipe {
     private AutomationConfig config = new AutomationConfig();
     private AutomationResponse<?> response = AutomationResponse.EMPTY_RESPONSE;
 
+    @SuppressWarnings("unused")
     @NotNull
     public static AutomationRecipe createFrom(@NotNull AutomationRequest request) {
         val recipe = new AutomationRecipe();
@@ -31,6 +32,8 @@ public class AutomationRecipe {
         recipe.setAutomationInput(AutomationInput.create(request.getInputParams()));
         recipe.setAutomationResourceId(request.getAutomationResourceId());
         recipe.config = request.getConfig();
+        // enforce tracking id equals to request id
+        recipe.config.getChromeDriverOptionsConfig().setTrackingId(request.getRequestId());
         return recipe;
     }
 

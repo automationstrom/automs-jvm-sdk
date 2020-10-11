@@ -8,6 +8,7 @@ import java.util.Map;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
+@SuppressWarnings("unused")
 @Data
 public class AutomationRequest {
     private String automationResourceId;

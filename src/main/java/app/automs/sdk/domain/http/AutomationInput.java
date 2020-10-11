@@ -12,6 +12,7 @@ import java.util.Map;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@SuppressWarnings("unused")
 public class AutomationInput {
     @NotNull
     private Map<String, String> inputParams = Collections.emptyMap();

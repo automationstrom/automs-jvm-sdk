@@ -5,6 +5,7 @@ import lombok.Data;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
+@SuppressWarnings("unused")
 @Data
 @JsonInclude(NON_NULL)
 public class PageStructuredConfig {

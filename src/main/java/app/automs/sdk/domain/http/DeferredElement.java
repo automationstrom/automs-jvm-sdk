@@ -2,6 +2,7 @@ package app.automs.sdk.domain.http;
 
 import lombok.val;
 
+@SuppressWarnings("unused")
 public class DeferredElement<T> {
     private T element;
 

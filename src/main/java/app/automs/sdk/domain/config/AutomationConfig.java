@@ -1,8 +1,8 @@
 package app.automs.sdk.domain.config;
 
 import app.automs.sdk.domain.config.headless.ChromeDriverOptionsConfig;
-import app.automs.sdk.domain.config.store.PageScreenCaptureConfig;
 import app.automs.sdk.domain.config.store.PageCopyConfig;
+import app.automs.sdk.domain.config.store.PageScreenCaptureConfig;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 

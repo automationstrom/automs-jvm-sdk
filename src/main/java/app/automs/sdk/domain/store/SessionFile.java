@@ -12,6 +12,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.http.entity.ContentType.DEFAULT_BINARY;
 
+@SuppressWarnings("unused")
 @Data
 @JsonInclude(NON_NULL)
 public class SessionFile {

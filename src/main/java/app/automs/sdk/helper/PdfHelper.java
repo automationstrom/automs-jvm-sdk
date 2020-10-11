@@ -7,8 +7,11 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import java.io.BufferedInputStream;
 import java.net.URL;
 
+//TODO candidate for depreciation
+@SuppressWarnings("unused")
 public class PdfHelper {
 
+    @SuppressWarnings("unused")
     public static String readPDFContent(String appUrl) throws Exception {
         val url = new URL(appUrl);
         val input = url.openStream();

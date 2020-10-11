@@ -2,6 +2,7 @@ package app.automs.sdk;
 
 import app.automs.sdk.config.StromProperties;
 import app.automs.sdk.domain.AutomationRecipe;
+import app.automs.sdk.domain.config.EnvContext;
 import app.automs.sdk.domain.config.headless.ChromeDriverOptionsConfig;
 import app.automs.sdk.domain.config.store.PageScreenCaptureConfig;
 import app.automs.sdk.domain.http.AutomationInput;
@@ -11,14 +12,12 @@ import app.automs.sdk.domain.store.StoreContainer;
 import app.automs.sdk.traits.AutomationFunction;
 import app.automs.sdk.traits.Storable;
 import app.automs.sdk.traits.Webdriver;
+import kong.unirest.Unirest;
 import lombok.SneakyThrows;
 import lombok.val;
 import lombok.var;
 import org.jetbrains.annotations.NotNull;
-import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.TakesScreenshot;
-import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.*;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
@@ -33,85 +32,108 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.openqa.selenium.By.*;
 import static org.openqa.selenium.OutputType.BYTES;
 
-@SuppressWarnings("SpringJavaAutowiredMembersInspection")
+@SuppressWarnings({"SpringJavaAutowiredMembersInspection", "unused"})
 abstract public class StromAutomation implements AutomationFunction, Webdriver, Storable {
 
-    @Autowired
-    public StromProperties properties;
     protected WebDriver driver;
     protected JavascriptExecutor js;
     protected TakesScreenshot ts;
+    protected String endpoint;
     @Autowired
     private StromStorage storage;
+    @Autowired
+    private EnvContext context;
+    @Autowired
+    private StromProperties properties;
 
     protected AutomationInput before(@NotNull AutomationRecipe recipe) {
+        recipe.getAutomationInput()
+                .getInputParams()
+                .put("requestId", recipe.getRequestId());
+
         return recipe.getAutomationInput();
     }
 
     // TODO make this method final, although Mockito tests will break
     public AutomationResponse<?> run(@NotNull AutomationRecipe recipe) {
-        AutomationResponse<?> processResponse;
+        AutomationResponse<?> response;
         // configure the base objects storage path
         val objectPath = storage.parseStoragePath(recipe);
         try {
+            // hard validation of the request resource
+            validateRequestedResource(recipe);
 
             // run pre-process function
             val input = before(recipe);
-            // hard validation of the request resource
-            checkRequestedResource(recipe);
 
-
-            // configure/get the browser driver
-            driver = getDriver(recipe.getConfig().getChromeDriverOptionsConfig());
-
-            // set up driver add-ons components
-            js = (JavascriptExecutor) driver;
-            ts = (TakesScreenshot) driver;
-
-            // start the automation
-            driver.get(entryPointUrl());
-            log.info(String.format("driver ready, automation using entry point url: [%s]", entryPointUrl()));
-
-            processResponse = process(input);
-
-            val exitPointUrl = driver.getCurrentUrl();
-            val pageSource = driver.getPageSource();
-            log.info(String.format("automation process done, last visited url: [%s - %s]", exitPointUrl, driver.getTitle()));
-            // end of the automation the automation
+            // execute recipe
+            setup(recipe);
+            response = execute(input);
 
             // automation sanity check
-            if (!validate(processResponse)) {
-                processResponse.setProcessingStatus(VALIDATION_FAIL);
+            if (!validate(response)) {
+                response.setProcessingStatus(VALIDATION_FAIL);
+                throw new IllegalStateException("Validation ");
             }
 
             // automation formal storage
-            store(new StoreContainer(recipe.getConfig(), processResponse, exitPointUrl, pageSource, objectPath));
+            store(new StoreContainer(recipe.getConfig(), response, driver.getCurrentUrl(),
+                    driver.getPageSource(), objectPath));
 
-            processResponse.setProcessingStatus(OK);
+            response.setProcessingStatus(OK);
 
         } catch (Exception e) {
             log.error("Error processing recipe", e);
             //noinspection rawtypes
-            processResponse = new AutomationResponse();
-            processResponse.setProcessingStatus(INTERNAL_ERROR);
-            processResponse.setCustomResponse(e.getMessage());
+            response = new AutomationResponse();
+            response.setProcessingStatus(INTERNAL_ERROR);
+            response.setCustomResponse(e.getMessage());
 
             // attempt to take screenshot on error
             attemptScreenshot(objectPath);
 
         } finally {
             if (driver != null) {
-                driver.quit();
+                if (recipe.getConfig().getChromeDriverOptionsConfig().getQuitSession()) {
+                    driver.quit();
+                } else {
+                    driver.close();
+                }
+            } else {
+                //noinspection PlaceholderCountMatchesArgumentCount
+                log.error("current session seen premature finalized", recipe);
             }
         }
 
-        return processResponse;
+        return response;
+    }
+
+    private void setup(@NotNull AutomationRecipe recipe) {
+        // configure/get the browser driver
+        driver = getDriver(recipe.getConfig().getChromeDriverOptionsConfig());
+
+        // set up driver add-ons components
+        js = (JavascriptExecutor) driver;
+        ts = (TakesScreenshot) driver;
+    }
+
+    private AutomationResponse<?> execute(AutomationInput input) {
+        // start the automation
+        driver.get(entryPointUrl());
+        log.info(String.format("driver ready, automation using entry point url: [%s]", entryPointUrl()));
+
+        val response = process(input);
+
+        log.info(String.format("automation process done, last visited url: [%s - %s]",
+                driver.getCurrentUrl(), driver.getTitle()));
+        // end of the automation the automation
+        return response;
     }
 
     private void attemptScreenshot(String objectPath) {
         try {
             if (driver != null) {
-                // manage().window().setSize(new Dimension(1920, 1057));
+                driver.manage().window().setSize(new Dimension(1366, 2700));
                 val filepath = String.format("%s-failure.png", objectPath);
                 storage.createFile(filepath, ts.getScreenshotAs(BYTES));
             }
@@ -119,7 +141,7 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
         }
     }
 
-    private void checkRequestedResource(@NotNull AutomationRecipe recipe) {
+    private void validateRequestedResource(@NotNull AutomationRecipe recipe) {
         val requestedResourceId = recipe.getAutomationResourceId();
         if (!Objects.equals(requestedResourceId, properties.getResourceId())) {
             throw new IllegalArgumentException(
@@ -127,7 +149,6 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
                             properties.getResourceId(), requestedResourceId));
         }
     }
-
 
     final public void store(final @NotNull StoreContainer container) {
         val config = container.getConfig();
@@ -178,10 +199,6 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
                 storage.createFile(filepath, sessionFile.getContent());
             }
         }
-//    range(0, userFiles.size())
-//            .mapToObj(index -> Pair.of(index, userFiles.get(index)))
-//            .filter(pair -> pair.getRight().getContent().length <= 5_500_000)
-//            .forEachOrdered(s -> s);
     }
 
     @SneakyThrows
@@ -227,11 +244,26 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
         //driverTimeoutConf.pageLoadTimeout(seconds, SECONDS);
     }
 
-
     private WebDriver getDriver(ChromeDriverOptionsConfig config) {
-        config = config == null ? new ChromeDriverOptionsConfig() : config;
-        val driver = withRemoteWebdriver(properties.getWebdriver(), prepareHeadlessBrowser(config));
+        config = (config == null) ? new ChromeDriverOptionsConfig() : config;
+
+        val driver = withRemoteWebdriver(
+                resolveEndpoint(properties.getWebdriverLb()), prepareHeadlessBrowser(config)
+        );
+
         setAutomationHardTimeoutLimit(driver, config.getElementSearchTimeout());
         return driver;
+    }
+
+    private String resolveEndpoint(String uri) {
+        try {
+            endpoint = context.isCloud() ? Unirest.get(uri).asString().getBody() : uri;
+            log.info(String.format("using lb-endpoint [%s]", endpoint));
+            return endpoint;
+        } catch (Exception e) {
+            log.error(String.format("using fb-endpoint [%s]", endpoint), e);
+            return properties.getWebdriverFb();
+        }
+
     }
 }

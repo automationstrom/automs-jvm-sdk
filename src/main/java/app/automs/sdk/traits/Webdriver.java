@@ -61,6 +61,9 @@ public interface Webdriver {
 
         chromeOptions.setCapability(LOGGING_PREFS, logging);
 
+        // use tracking id for downloads handling
+        chromeOptions.setCapability("browserless.trackingId", config.getTrackingId());
+
         return chromeOptions;
     }
 
@@ -72,5 +75,6 @@ public interface Webdriver {
         return driver;
     }
 
+    @SuppressWarnings("unused")
     void setAutomationHardTimeoutLimit(@NotNull WebDriver driver, long seconds);
 }

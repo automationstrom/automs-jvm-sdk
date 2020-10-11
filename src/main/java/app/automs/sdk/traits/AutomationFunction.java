@@ -9,6 +9,7 @@ public interface AutomationFunction {
 
     AutomationResponse<?> process(@NotNull AutomationInput automationInput);
 
+    @SuppressWarnings("unused")
     AutomationResponse<?> run(@NotNull AutomationRecipe recipe);
 
     Boolean validate(@NotNull AutomationResponse<?> response);

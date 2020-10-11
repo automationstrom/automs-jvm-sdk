@@ -2,6 +2,7 @@ package app.automs.sdk;
 
 import app.automs.sdk.config.StromProperties;
 import app.automs.sdk.domain.AutomationRecipe;
+import app.automs.sdk.domain.config.EnvContext;
 import app.automs.sdk.domain.http.AutomationResponse;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
@@ -19,6 +20,7 @@ import java.nio.file.Paths;
 import static java.text.MessageFormat.format;
 import static java.time.Instant.now;
 
+@SuppressWarnings({"SpringJavaAutowiredFieldsWarningInspection", "unused"})
 @Component
 public class StromStorage {
 
@@ -26,6 +28,8 @@ public class StromStorage {
     public StromProperties properties;
     @Autowired
     private Storage storage;
+    @Autowired
+    private EnvContext context;
     @Autowired
     private Gson gson;
 
@@ -37,13 +41,11 @@ public class StromStorage {
         val blobInfo = BlobInfo.newBuilder(blobId).build();
         storage.create(blobInfo, bytes);
 
-        // write local
-        val context = System.getenv("CONTEXT") == null ? "local" : System.getenv("CONTEXT");
-        // strip file path
+        // write local and strip file path
         val filename = filepath.split("/")[2];
-        if (context.equalsIgnoreCase("local")) {
+        if (context.isLocal()) {
             Files.write(Paths.get(parseDevPath(filename)), bytes);
-        } else if ( context.equalsIgnoreCase("compose")) {
+        } else if (context.isCompose()) {
             Files.write(Paths.get(filename), bytes);
         }
     }

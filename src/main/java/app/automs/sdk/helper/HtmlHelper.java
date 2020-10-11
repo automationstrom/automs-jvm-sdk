@@ -1,7 +1,7 @@
 package app.automs.sdk.helper;
 
-import app.automs.sdk.domain.config.store.PageCopyConfigCharset;
 import app.automs.sdk.domain.config.store.PageCopyConfig;
+import app.automs.sdk.domain.config.store.PageCopyConfigCharset;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.DataNode;
@@ -51,6 +51,7 @@ public class HtmlHelper {
      *     then html2pdf(document.body)
      * @param doc jsoup html target document
      */
+    @SuppressWarnings("SameParameterValue")
     private static void injectJs(Document doc, String jsFunction) {
         doc.head()
                 .appendElement("script")
