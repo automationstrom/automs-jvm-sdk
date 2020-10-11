@@ -38,7 +38,7 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
     protected WebDriver driver;
     protected JavascriptExecutor js;
     protected TakesScreenshot ts;
-    protected String endpoint;
+    private String webdriverEndpoint;
     @Autowired
     private StromStorage storage;
     @Autowired
@@ -257,13 +257,17 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
 
     private String resolveEndpoint(String uri) {
         try {
-            endpoint = context.isCloud() || uri.endsWith("9090") ? Unirest.get(uri).asString().getBody() : uri;
-            assert !endpoint.contains("Bad Gateway") : "LB Fail: Bad Gateway";
+            webdriverEndpoint = context.isCloud() || uri.endsWith("9090") ? Unirest.get(uri).asString().getBody() : uri;
+            assert !webdriverEndpoint.contains("Bad Gateway") : "LB Fail: Bad Gateway";
         } catch (Exception e) {
-            endpoint = properties.getWebdriverFb();
-            log.error(String.format("using fb-endpoint [%s]", endpoint), e);
+            webdriverEndpoint = properties.getWebdriverFb();
+            log.error(String.format("using fb-endpoint [%s]", webdriverEndpoint), e);
         }
-        log.info(String.format("using endpoint [%s]", endpoint));
-        return endpoint;
+        log.info(String.format("using endpoint [%s]", webdriverEndpoint));
+        return webdriverEndpoint;
+    }
+
+    public byte[] pickFile(String requestId, String filename) {
+        return storage.getDownloadedFile(webdriverEndpoint, requestId, filename);
     }
 }

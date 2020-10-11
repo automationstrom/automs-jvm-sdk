@@ -8,6 +8,7 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.gson.Gson;
+import kong.unirest.Unirest;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.jetbrains.annotations.NotNull;
@@ -20,7 +21,7 @@ import java.nio.file.Paths;
 import static java.text.MessageFormat.format;
 import static java.time.Instant.now;
 
-@SuppressWarnings({"SpringJavaAutowiredFieldsWarningInspection", "unused"})
+
 @Component
 public class StromStorage {
 
@@ -64,6 +65,12 @@ public class StromStorage {
     public String parseStoragePath(@NotNull AutomationRecipe recipe) {
         val objectName = String.format("%s-asset", recipe.getAutomationResourceId().split("/")[1]);
         return format("{0}/{1}/{2}", recipe.getOrderId(), recipe.getRequestId(), objectName);
+    }
+
+    public byte[] getDownloadedFile(String endpoint, String requestId, String filename) {
+        return Unirest.get(
+                format("{0}/{1}/{2}", String.format("%s/workspace", endpoint), requestId, filename)
+        ).asBytes().getBody();
     }
 
 }
