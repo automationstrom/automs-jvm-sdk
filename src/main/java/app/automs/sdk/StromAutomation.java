@@ -49,10 +49,8 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
     private StromProperties properties;
 
     protected AutomationInput before(@NotNull AutomationRecipe recipe) {
-        recipe.getAutomationInput()
-                .getInputParams()
+        recipe.getAutomationInput().getInputParams()
                 .put("requestId", recipe.getRequestId());
-
         return recipe.getAutomationInput();
     }
 
@@ -248,11 +246,7 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
 
     private WebDriver getDriver(ChromeDriverOptionsConfig config) {
         config = (config == null) ? new ChromeDriverOptionsConfig() : config;
-
-        val driver = withRemoteWebdriver(
-                resolveEndpoint(properties.getWebdriver()), prepareHeadlessBrowser(config)
-        );
-
+        val driver = withRemoteWebdriver(resolveEndpoint(properties.getWebdriver()), prepareHeadlessBrowser(config));
         setAutomationHardTimeoutLimit(driver, config.getElementSearchTimeout());
         return driver;
     }

@@ -72,10 +72,7 @@ public class StromStorage {
     // TODO better error handling, if 404 throw error?
     public byte[] getDownloadedFile(String endpoint, String requestId, String filename) {
         return Unirest.get(
-                format("{0}/{1}/{2}",
-                        String.format("%s/workspace", endpoint.replace("/webdriver", "")),
-                        requestId,
-                        filename)
+                format("{0}/{1}/{2}", String.format("%s/workspace", endpoint), requestId, filename)
         ).asBytes().getBody();
     }
 

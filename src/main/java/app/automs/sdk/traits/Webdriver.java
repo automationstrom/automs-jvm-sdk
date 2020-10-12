@@ -70,7 +70,7 @@ public interface Webdriver {
     @NotNull
     @SneakyThrows
     default WebDriver withRemoteWebdriver(String remoteWebdriver, ChromeOptions chromeOptions) {
-        val driver = new RemoteWebDriver(new URL(remoteWebdriver), chromeOptions);
+        val driver = new RemoteWebDriver(new URL(remoteWebdriver + "/webdriver"), chromeOptions);
         Objects.requireNonNull(driver);
         return driver;
     }
