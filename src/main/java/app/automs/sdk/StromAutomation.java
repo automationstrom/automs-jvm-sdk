@@ -76,19 +76,19 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
             // automation sanity check
             val validationResponse = validate(response);
             if (!validationResponse.getIsValid()) {
-                response.setStage(VALIDATION_FAIL);
+                response.setStatus(VALIDATION_FAIL);
                 response.setCustomResponse("failed validations: " + join(", ", validationResponse.getErrorMessages()));
                 response.setSessionFiles(emptyList());
                 // attempt to take screenshot on validation error
                 attemptScreenshot(objectPath);
             }
 
-            if (response.getStage() == PROCESSED) {
+            if (response.getStatus() == PROCESSED) {
                 // automation formal storage
                 store(new StoreContainer(recipe.getConfig(), response, driver.getCurrentUrl(),
                         driver.getPageSource(), objectPath));
 
-                response.setStage(SUCCESSFUL);
+                response.setStatus(SUCCESSFUL);
             }
 
         } catch (Exception e) {
@@ -96,9 +96,10 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
             //noinspection rawtypes
             response = new AutomationResponse();
             response.setCustomResponse(
-                    MessageFormat.format("Error at stage [{0}] | cause [{1}]", response.getStage(), e.getMessage())
+                    MessageFormat.format("Failed at stage [{0}] \n " +
+                            "cause ({1})", response.getStatus(), e.getMessage())
             );
-            response.setStage(ERROR);
+            response.setStatus(ERROR);
 
             // attempt to take screenshot on error
             attemptScreenshot(objectPath);
@@ -135,7 +136,7 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
         log.info(String.format("driver ready, automation using entry point url: [%s]", entryPointUrl()));
 
         val response = process(input);
-        response.setStage(PROCESSED);
+        response.setStatus(PROCESSED);
 
         log.info(String.format("automation process done, last visited url: [%s - %s]",
                 driver.getCurrentUrl(), driver.getTitle()));

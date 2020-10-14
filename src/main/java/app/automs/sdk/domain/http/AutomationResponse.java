@@ -15,7 +15,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
 public class AutomationResponse<T> {
     @SuppressWarnings("rawtypes")
     public static final AutomationResponse EMPTY_RESPONSE = new AutomationResponse<>();
-    private AutomationState stage = AutomationState.PROCESSING;
+    private AutomationState status = AutomationState.PROCESSING;
     private String customResponse = "";
     private T responseEntity;
     private List<SessionFile> sessionFiles = Collections.emptyList();
