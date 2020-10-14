@@ -31,11 +31,13 @@ final public class AutomationResponse<T extends ResponseOutput> {
         this.sessionFiles = sessionFiles;
     }
 
+    @NotNull
     public static AutomationResponse<? extends ResponseOutput> withEmptyOutput() {
         return new AutomationResponse<>(EmptyResponseOutput.emptyOutput());
     }
 
-    public AutomationResponse<? extends ResponseOutput> withStatus(AutomationState status) {
+    @NotNull
+    public AutomationResponse<T> withStatus(AutomationState status) {
         return (this.status == status) ? this :
                 new AutomationResponse<>(this.responseEntity, status, this.customResponse, this.sessionFiles);
     }

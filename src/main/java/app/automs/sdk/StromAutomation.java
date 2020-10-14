@@ -40,7 +40,7 @@ import static org.openqa.selenium.OutputType.BYTES;
 // @Scope(value = "prototype", proxyMode = ScopedProxyMode.TARGET_CLASS)
 // http://www.javabyexamples.com/scoped-beans-as-dependencies-in-spring
 @SuppressWarnings({"SpringJavaAutowiredMembersInspection", "unused"})
-abstract public class StromAutomation implements AutomationFunction, Webdriver, Storable {
+abstract public class StromAutomation<T extends ResponseOutput> implements AutomationFunction<T>, Webdriver, Storable {
 
     protected WebDriver driver;
     protected JavascriptExecutor js;
@@ -60,8 +60,9 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
     }
 
     // TODO make this method final, although Mockito tests will break
-    public AutomationResponse<?> run(@NotNull AutomationRecipe recipe) {
-        AutomationResponse<?> response;
+    @SuppressWarnings("rawtypes")
+    public @NotNull AutomationResponse<T> run(@NotNull AutomationRecipe recipe) {
+        AutomationResponse<T> response;
         // configure the base objects storage path
         val objectPath = storage.parseStoragePath(recipe);
         try {
@@ -98,7 +99,8 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
 
         } catch (Exception e) {
             log.error("Error running automation", e);
-            response = AutomationResponse.withEmptyOutput();
+            //noinspection unchecked
+            response = new AutomationResponse(EmptyResponseOutput.emptyOutput());
             response.setCustomResponse(
                     MessageFormat.format("Failed at stage [{0}], " +
                             "root cause is: ({1})", response.getStatus(), e.getMessage())
@@ -134,7 +136,7 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
 
     }
 
-    private AutomationResponse<? extends ResponseOutput> execute(AutomationInput input) {
+    private @NotNull AutomationResponse<T> execute(@NotNull AutomationInput input) {
         // start the automation
         driver.get(entryPointUrl());
         log.info(String.format("driver ready, automation using entry point url: [%s]", entryPointUrl()));
@@ -143,7 +145,9 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
 
         log.info(String.format("automation process done, last visited url: [%s - %s]", driver.getCurrentUrl(), driver.getTitle()));
         // end of the automation the automation
-        return response.withStatus(PROCESSED);
+
+        //noinspection unchecked
+        return (AutomationResponse<T>) response.withStatus(PROCESSED);
     }
 
     private void attemptScreenshot(String objectPath) {
