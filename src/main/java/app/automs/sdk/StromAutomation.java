@@ -20,14 +20,17 @@ import org.jetbrains.annotations.NotNull;
 import org.openqa.selenium.*;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.text.MessageFormat;
 import java.util.List;
 import java.util.Objects;
 
-import static app.automs.sdk.domain.AutomationProcessingStatus.*;
+import static app.automs.sdk.domain.AutomationState.*;
 import static app.automs.sdk.helper.HtmlHelper.getStringBytesEncodedAs;
 import static app.automs.sdk.helper.HtmlHelper.prepareHtmlFile;
 import static app.automs.sdk.helper.ScreenshotHelper.takeFullPageScreenShotAsByte;
+import static java.lang.String.join;
 import static java.text.MessageFormat.format;
+import static java.util.Collections.emptyList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.openqa.selenium.By.*;
 import static org.openqa.selenium.OutputType.BYTES;
@@ -71,23 +74,31 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
             response = execute(input);
 
             // automation sanity check
-            if (!validate(response)) {
-                response.setProcessingStatus(VALIDATION_FAIL);
-                throw new IllegalStateException("Validation ");
+            val validationResponse = validate(response);
+            if (!validationResponse.getIsValid()) {
+                response.setStage(VALIDATION_FAIL);
+                response.setCustomResponse("failed validations: " + join(", ", validationResponse.getErrorMessages()));
+                response.setSessionFiles(emptyList());
+                // attempt to take screenshot on validation error
+                attemptScreenshot(objectPath);
             }
 
-            // automation formal storage
-            store(new StoreContainer(recipe.getConfig(), response, driver.getCurrentUrl(),
-                    driver.getPageSource(), objectPath));
+            if (response.getStage() == PROCESSED) {
+                // automation formal storage
+                store(new StoreContainer(recipe.getConfig(), response, driver.getCurrentUrl(),
+                        driver.getPageSource(), objectPath));
 
-            response.setProcessingStatus(OK);
+                response.setStage(SUCCESSFUL);
+            }
 
         } catch (Exception e) {
-            log.error("Error processing recipe", e);
+            log.error("Error running automation", e);
             //noinspection rawtypes
             response = new AutomationResponse();
-            response.setProcessingStatus(INTERNAL_ERROR);
-            response.setCustomResponse(e.getMessage());
+            response.setCustomResponse(
+                    MessageFormat.format("Error at stage [{0}] | cause [{1}]", response.getStage(), e.getMessage())
+            );
+            response.setStage(ERROR);
 
             // attempt to take screenshot on error
             attemptScreenshot(objectPath);
@@ -115,6 +126,7 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
         // set up driver add-ons components
         js = (JavascriptExecutor) driver;
         ts = (TakesScreenshot) driver;
+
     }
 
     private AutomationResponse<?> execute(AutomationInput input) {
@@ -123,6 +135,7 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
         log.info(String.format("driver ready, automation using entry point url: [%s]", entryPointUrl()));
 
         val response = process(input);
+        response.setStage(PROCESSED);
 
         log.info(String.format("automation process done, last visited url: [%s - %s]",
                 driver.getCurrentUrl(), driver.getTitle()));
@@ -247,6 +260,7 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
     private WebDriver getDriver(ChromeDriverOptionsConfig config) {
         config = (config == null) ? new ChromeDriverOptionsConfig() : config;
         val driver = withRemoteWebdriver(resolveEndpoint(properties.getWebdriver()), prepareHeadlessBrowser(config));
+
         setAutomationHardTimeoutLimit(driver, config.getElementSearchTimeout());
         return driver;
     }

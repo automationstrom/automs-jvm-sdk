@@ -3,6 +3,7 @@ package app.automs.sdk.traits;
 import app.automs.sdk.domain.AutomationRecipe;
 import app.automs.sdk.domain.http.AutomationInput;
 import app.automs.sdk.domain.http.AutomationResponse;
+import app.automs.sdk.domain.http.AutomationValidation;
 import org.jetbrains.annotations.NotNull;
 
 public interface AutomationFunction {
@@ -12,7 +13,7 @@ public interface AutomationFunction {
     @SuppressWarnings("unused")
     AutomationResponse<?> run(@NotNull AutomationRecipe recipe);
 
-    Boolean validate(@NotNull AutomationResponse<?> response);
+    AutomationValidation validate(@NotNull AutomationResponse<?> response);
 
     @NotNull
     String entryPointUrl();
