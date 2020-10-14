@@ -96,8 +96,8 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
             //noinspection rawtypes
             response = new AutomationResponse();
             response.setCustomResponse(
-                    MessageFormat.format("Failed at stage [{0}] \n " +
-                            "cause ({1})", response.getStatus(), e.getMessage())
+                    MessageFormat.format("Failed at stage [{0}], " +
+                            "root cause is: ({1})", response.getStatus(), e.getMessage())
             );
             response.setStatus(ERROR);
 
