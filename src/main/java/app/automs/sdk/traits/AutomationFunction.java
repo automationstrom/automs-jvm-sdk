@@ -4,16 +4,17 @@ import app.automs.sdk.domain.AutomationRecipe;
 import app.automs.sdk.domain.http.AutomationInput;
 import app.automs.sdk.domain.http.AutomationResponse;
 import app.automs.sdk.domain.http.AutomationValidation;
+import app.automs.sdk.domain.http.ResponseOutput;
 import org.jetbrains.annotations.NotNull;
 
 public interface AutomationFunction {
 
-    AutomationResponse<?> process(@NotNull AutomationInput automationInput);
+    AutomationResponse<? extends ResponseOutput> process(@NotNull AutomationInput automationInput);
 
     @SuppressWarnings("unused")
-    AutomationResponse<?> run(@NotNull AutomationRecipe recipe);
+    AutomationResponse<? extends ResponseOutput> run(@NotNull AutomationRecipe recipe);
 
-    AutomationValidation validate(@NotNull AutomationResponse<?> response);
+    AutomationValidation validate(@NotNull AutomationResponse<? extends ResponseOutput> response);
 
     @NotNull
     String entryPointUrl();

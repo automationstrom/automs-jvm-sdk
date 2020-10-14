@@ -4,6 +4,7 @@ import app.automs.sdk.domain.config.AutomationConfig;
 import app.automs.sdk.domain.http.AutomationInput;
 import app.automs.sdk.domain.http.AutomationRequest;
 import app.automs.sdk.domain.http.AutomationResponse;
+import app.automs.sdk.domain.http.ResponseOutput;
 import lombok.Data;
 import lombok.val;
 import org.jetbrains.annotations.NotNull;
@@ -21,7 +22,7 @@ public class AutomationRecipe {
     private String automationResourceId;
     private AutomationInput automationInput = new AutomationInput();
     private AutomationConfig config = new AutomationConfig();
-    private AutomationResponse<?> response = AutomationResponse.EMPTY_RESPONSE;
+    private AutomationResponse<? extends ResponseOutput> response = AutomationResponse.withEmptyOutput();
 
     @SuppressWarnings("unused")
     @NotNull

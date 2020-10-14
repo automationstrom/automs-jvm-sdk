@@ -7,6 +7,8 @@ import app.automs.sdk.domain.config.headless.ChromeDriverOptionsConfig;
 import app.automs.sdk.domain.config.store.PageScreenCaptureConfig;
 import app.automs.sdk.domain.http.AutomationInput;
 import app.automs.sdk.domain.http.AutomationResponse;
+import app.automs.sdk.domain.http.EmptyResponseOutput;
+import app.automs.sdk.domain.http.ResponseOutput;
 import app.automs.sdk.domain.store.SessionFile;
 import app.automs.sdk.domain.store.StoreContainer;
 import app.automs.sdk.traits.AutomationFunction;
@@ -74,13 +76,16 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
             response = execute(input);
 
             // automation sanity check
-            val validationResponse = validate(response);
-            if (!validationResponse.getIsValid()) {
-                response.setStatus(VALIDATION_FAIL);
-                response.setCustomResponse("failed validations: " + join(", ", validationResponse.getErrorMessages()));
-                response.setSessionFiles(emptyList());
-                // attempt to take screenshot on validation error
-                attemptScreenshot(objectPath);
+
+            if (response.getResponseEntity() != EmptyResponseOutput.emptyOutput()) {
+                val validationResponse = validate(response);
+                if (!validationResponse.getIsValid()) {
+                    response.setCustomResponse("failed validations: " + join(", ", validationResponse.getErrorMessages()));
+                    response.setSessionFiles(emptyList());
+                    response = response.withStatus(VALIDATION_FAIL);
+                    // attempt to take screenshot on validation error
+                    attemptScreenshot(objectPath);
+                }
             }
 
             if (response.getStatus() == PROCESSED) {
@@ -88,18 +93,17 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
                 store(new StoreContainer(recipe.getConfig(), response, driver.getCurrentUrl(),
                         driver.getPageSource(), objectPath));
 
-                response.setStatus(SUCCESSFUL);
+                response = response.withStatus(SUCCESSFUL);
             }
 
         } catch (Exception e) {
             log.error("Error running automation", e);
-            //noinspection rawtypes
-            response = new AutomationResponse();
+            response = AutomationResponse.withEmptyOutput();
             response.setCustomResponse(
                     MessageFormat.format("Failed at stage [{0}], " +
                             "root cause is: ({1})", response.getStatus(), e.getMessage())
             );
-            response.setStatus(ERROR);
+            response = response.withStatus(ERROR);
 
             // attempt to take screenshot on error
             attemptScreenshot(objectPath);
@@ -130,18 +134,16 @@ abstract public class StromAutomation implements AutomationFunction, Webdriver, 
 
     }
 
-    private AutomationResponse<?> execute(AutomationInput input) {
+    private AutomationResponse<? extends ResponseOutput> execute(AutomationInput input) {
         // start the automation
         driver.get(entryPointUrl());
         log.info(String.format("driver ready, automation using entry point url: [%s]", entryPointUrl()));
 
         val response = process(input);
-        response.setStatus(PROCESSED);
 
-        log.info(String.format("automation process done, last visited url: [%s - %s]",
-                driver.getCurrentUrl(), driver.getTitle()));
+        log.info(String.format("automation process done, last visited url: [%s - %s]", driver.getCurrentUrl(), driver.getTitle()));
         // end of the automation the automation
-        return response;
+        return response.withStatus(PROCESSED);
     }
 
     private void attemptScreenshot(String objectPath) {
