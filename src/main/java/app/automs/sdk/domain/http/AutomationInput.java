@@ -1,5 +1,6 @@
 package app.automs.sdk.domain.http;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,7 +18,8 @@ public class AutomationInput {
     @NotNull
     private Map<String, String> inputParams = Collections.emptyMap();
 
-    private DeferredElement<?> deferredElement;
+    @JsonIgnore
+    private Promise<?> completable;
 
     public static AutomationInput create(Map<String, String> params) {
         val automationInput = new AutomationInput();
@@ -25,9 +27,9 @@ public class AutomationInput {
         return automationInput;
     }
 
-    public static AutomationInput create(DeferredElement<?> element, Map<String, String> params) {
+    public static AutomationInput create(Promise<?> element, Map<String, String> params) {
         val automationInput = new AutomationInput();
-        automationInput.setDeferredElement(element);
+        automationInput.setCompletable(element);
         automationInput.setInputParams(params);
         return automationInput;
     }
