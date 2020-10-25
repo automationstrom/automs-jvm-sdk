@@ -17,9 +17,11 @@ public class StromProperties {
     @NotBlank
     private String webdriver;
     @NotBlank
-    private String webdriverFb;
+    private String webdriverFallback;
     @NotBlank
     private String baseBucket;
     @NotBlank
     private String projectId;
+    @NotBlank
+    private String responsePublisherApi;
 }

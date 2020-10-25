@@ -14,6 +14,7 @@ import app.automs.sdk.domain.store.StoreContainer;
 import app.automs.sdk.traits.AutomationFunction;
 import app.automs.sdk.traits.Storable;
 import app.automs.sdk.traits.Webdriver;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import kong.unirest.Unirest;
 import lombok.SneakyThrows;
 import lombok.val;
@@ -21,12 +22,14 @@ import lombok.var;
 import org.jetbrains.annotations.NotNull;
 import org.openqa.selenium.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.Objects;
 
 import static app.automs.sdk.domain.AutomationState.*;
+import static app.automs.sdk.domain.http.AutomationResponse.withEmptyOutput;
 import static app.automs.sdk.helper.HtmlHelper.getStringBytesEncodedAs;
 import static app.automs.sdk.helper.HtmlHelper.prepareHtmlFile;
 import static app.automs.sdk.helper.ScreenshotHelper.takeFullPageScreenShotAsByte;
@@ -36,6 +39,10 @@ import static java.util.Collections.emptyList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.openqa.selenium.By.*;
 import static org.openqa.selenium.OutputType.BYTES;
+import static org.springframework.http.HttpStatus.ACCEPTED;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.springframework.http.ResponseEntity.ok;
+import static org.springframework.http.ResponseEntity.status;
 
 // @Scope(value = "prototype", proxyMode = ScopedProxyMode.TARGET_CLASS)
 // http://www.javabyexamples.com/scoped-beans-as-dependencies-in-spring
@@ -52,6 +59,8 @@ abstract public class StromAutomation<T extends ResponseOutput> implements Autom
     private EnvContext context;
     @Autowired
     private StromProperties properties;
+    @Autowired
+    private ObjectMapper jacksonObjectMapper;
 
     protected AutomationInput before(@NotNull AutomationRecipe recipe) {
         recipe.getAutomationInput().getInputParams()
@@ -60,7 +69,6 @@ abstract public class StromAutomation<T extends ResponseOutput> implements Autom
     }
 
     // TODO make this method final, although Mockito tests will break
-    @SuppressWarnings("rawtypes")
     public @NotNull AutomationResponse<T> run(@NotNull AutomationRecipe recipe) {
         AutomationResponse<T> response;
         // configure the base objects storage path
@@ -100,7 +108,7 @@ abstract public class StromAutomation<T extends ResponseOutput> implements Autom
         } catch (Exception e) {
             log.error("Error running automation", e);
             //noinspection unchecked
-            response = new AutomationResponse(EmptyResponseOutput.emptyOutput());
+            response = (AutomationResponse<T>) withEmptyOutput();
             response.setCustomResponse(
                     MessageFormat.format("Failed at stage [{0}], " +
                             "root cause is: ({1})", response.getStatus(), e.getMessage())
@@ -277,7 +285,7 @@ abstract public class StromAutomation<T extends ResponseOutput> implements Autom
             webdriverEndpoint = context.isCloud() || uri.endsWith("9090") ? Unirest.get(uri).asString().getBody() : uri;
             assert !webdriverEndpoint.contains("Bad Gateway") : "LB Fail: Bad Gateway";
         } catch (Exception e) {
-            webdriverEndpoint = properties.getWebdriverFb();
+            webdriverEndpoint = properties.getWebdriverFallback();
             log.error(String.format("using fb-endpoint [%s]", webdriverEndpoint), e);
         }
         log.info(String.format("using endpoint [%s]", webdriverEndpoint));
@@ -286,5 +294,34 @@ abstract public class StromAutomation<T extends ResponseOutput> implements Autom
 
     public byte[] pickFile(String requestId, String filename) {
         return storage.getDownloadedFile(webdriverEndpoint, requestId, filename);
+    }
+
+    @SneakyThrows
+    private void registerResponse(AutomationRecipe recipe) {
+        if (context.isCloud()) {
+            Unirest.post(properties.getResponsePublisherApi())
+                    .header("Content-Type", "application/json")
+                    .body(jacksonObjectMapper.writeValueAsString(recipe))
+                    .asJsonAsync();
+        }
+    }
+
+    public @NotNull ResponseEntity<AutomationRecipe> withResponseEntity(AutomationRecipe recipe) {
+        registerResponse(recipe);
+        ResponseEntity<AutomationRecipe> response = null;
+        switch (recipe.getResponse().getStatus()) {
+            case SUCCESSFUL:
+                response = ok(recipe);
+                break;
+            case VALIDATION_FAIL:
+                response = status(ACCEPTED).body(recipe);
+                break;
+            case ERROR:
+            case PROCESSING:
+            case PROCESSED:
+                response = status(INTERNAL_SERVER_ERROR).body(recipe);
+                break;
+        }
+        return response;
     }
 }
